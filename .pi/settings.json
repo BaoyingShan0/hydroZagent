@@ -1,0 +1,32 @@
+{
+  "packages": [
+    "npm:@juicesharp/rpiv-btw",
+    "npm:@juicesharp/rpiv-ask-user-question",
+    "npm:@juicesharp/rpiv-todo",
+    "npm:pi-lens",
+    "npm:pi-mcp-adapter",
+    "npm:@narumitw/pi-goal",
+    "npm:@narumitw/pi-statusline",
+    "npm:@tintinweb/pi-subagents",
+    "npm:context-mode",
+    "npm:pi-web-access",
+    "npm:pi-memory",
+    "npm:pi-mega-compact",
+    "npm:@ff-labs/pi-fff",
+    "npm:@juicesharp/rpiv-voice",
+    "npm:@narumitw/pi-plan-mode",
+    "npm:pi-background-tasks",
+    "npm:@companion-ai/feynman",
+    "npm:@plannotator/pi-extension",
+    "npm:@gotgenes/pi-permission-system",
+    "npm:pi-hermes-memory",
+    "npm:@mjasnikovs/pi-task",
+    "npm:pi-simplify",
+    "npm:@vigolium/piolium",
+    "npm:@dietrichgebert/ponytail",
+    "npm:@7n/rules",
+    "npm:@tangle-network/tcloud-agent",
+    "npm:@narumitw/pi-lsp",
+    "npm:@parke.dev/pi-github"
+  ]
+}
