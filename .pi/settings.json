@@ -27,6 +27,10 @@
     "npm:@7n/rules",
     "npm:@tangle-network/tcloud-agent",
     "npm:@narumitw/pi-lsp",
-    "npm:@parke.dev/pi-github"
+    "npm:@parke.dev/pi-github",
+    "git:github.com/anthropics/skills",
+    "npm:pi-skill-glab",
+    "npm:mitsupi",
+    "npm:@howaboua/pi-skills"
   ]
 }
