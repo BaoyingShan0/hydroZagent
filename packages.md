@@ -2,7 +2,7 @@
 
 本文件记录 `community-hydroagent` 项目级 `.pi/settings.json` 中分发的 pi 包（extensions + skills），供水利工程师 clone 后"打开即用"。工程师信任项目后，pi 启动时自动按 `.pi/settings.json` 安装缺失包：npm 包装进 `.pi/npm/`，git 包克隆进 `.pi/git/`（两者均被 gitignore，不入库；只有 `.pi/settings.json` 入库）。
 
-统计：**32 个包**（31 npm + 1 git），提供约 **64 个 skills**。
+统计：**32 个包**（31 npm + 1 git），提供约 **64 个 skills**；另含项目内置（不入 packages、直接入库）的 `doc-convert` skill 与 `/doc` prompt，见下文[文档处理](#文档处理办公软件操作与互转)一节。
 
 ---
 
@@ -101,9 +101,36 @@ GitLab CLI skill，适配很多单位内网用 GitLab 管理规程/代码的场�
 
 ---
 
+## 文档处理（办公软件操作与互转）
+
+水利工作者日常要处理 Word/Excel/PPT/PDF 的操作与相互转换。本仓库用三层叠加解决，前三层已就绪：
+
+| 层 | 资源 | 位置 | 作用 |
+|---|---|---|---|
+| ① 深度创建/编辑/读取单个格式 | anthropics `docx`/`xlsx`/`pptx`/`pdf`/`doc-coauthoring` skills | `git:anthropics/skills`（已在 settings.json） | 格式化、公式、幻灯片、追踪修订、表单、OCR |
+| ② 任意格式互转 + PDF 页操作 | `doc-convert` skill | `.pi/skills/doc-convert/`（入库） | 一棵决策树选引擎（LibreOffice/pandoc/markitdown/poppler/pypdf）；`scripts/convert.py` 路由器一句搞定 docx↔pdf、xlsx↔csv、pdf↔txt、pptx↔pdf、md↔docx、doc→docx、xls→xlsx、ppt→pptx，以及 merge/split/rotate PDF |
+| ③ 快速入口 | `/doc` slash prompt | `.pi/prompts/doc.md`（入库） | `/doc 把简报.docx 转成 pdf`，端到端含校验 |
+| ④ 工具链自检与一键安装 | `doctor.py` + `install/install.{sh,ps1}` | `.pi/skills/doc-convert/`（入库） | 检测 pandoc/LibreOffice/poppler/qpdf/python&npm 库 + CJK 字体；缺什么打印该 OS 的安装命令。**这是让 ①② 真正能跑的关键**——anthropics skills 假设这些已装，但新机一律没有 |
+
+用法：
+
+```bash
+python .pi/skills/doc-convert/scripts/doctor.py          # 自检工具链
+python .pi/skills/doc-convert/scripts/doctor.py --fix     # 打印本机安装命令
+bash     .pi/skills/doc-convert/install/install.sh        # macOS/Linux 一键装
+powershell -ExecutionPolicy Bypass -File .pi/skills/doc-convert/install/install.ps1   # Windows
+python .pi/skills/doc-convert/scripts/convert.py 简报.docx -t pdf     # 互转
+```
+
+设计取舍：
+
+- **不默认加 MCP 办公服务器**（如 `markitdown-mcp`、`office-word/excel/powerpoint-mcp-server`）。它们底层仍需同一套工具链，且多为 Windows + MS Office 专属，不适合作为跨平台内网分发默认。若某办公室已装 MS Office 且想要原生自动化，可后续用 `pi-mcp-adapter` 按需接入，并在 `.pi/settings.json` 加包。
+- **PDF 是终结格式**：PDF→docx/xlsx/pptx 一律有损（只能抽文字/表格再重建），`doc-convert` 会明示，不假装无损往返。
+- **CJK 字体**：中文文档转 PDF 必须有中文字体，否则 LibreOffice 渲染成豆腐块。`doctor.py` 会查中文字体（本机检测到 `msyh.ttc` 微软雅黑）。
+
 ## 提醒
 
-1. **Anthropic skills 依赖 Python 环境**：`docx` 用 Node `docx` npm 包；`xlsx` 用 `openpyxl`/`pandas`；`pdf` 用 Python 库 + `pandoc`。工程师机器需装 Python + Node，内网部署文档里要写明。Anthropic skills 的 license 标注 `Proprietary`（见仓库 LICENSE.txt），商用前需确认条款。
+1. **Anthropic skills 与 doc-convert 依赖一套工具链**：`docx` 用 Node `docx` npm 包；`xlsx` 用 `openpyxl`/`pandas`；`pdf` 用 `pypdf`/`pdfplumber` + `pandoc`；互转还需 LibreOffice（`soffice`）、Poppler（`pdftotext`/`pdftoppm`）。**新机一律缺**——先跑 `python .pi/skills/doc-convert/scripts/doctor.py` 自检，缺什么按打印的命令装（或直接跑 `install/install.sh` / `install/install.ps1` 一键装）。内网部署文档里写明这一步。Anthropic skills 的 license 标注 `Proprietary`（见仓库 LICENSE.txt），商用前需确认条款；`doc-convert` 为 MIT。
 
 2. **mitsupi 含 macOS 专属 skill**（apple-mail、oebb-scotty、anachb），Windows/内网环境用不上，pi 按需加载，不影响。
 
