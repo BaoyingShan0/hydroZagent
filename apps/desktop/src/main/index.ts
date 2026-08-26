@@ -1775,6 +1775,9 @@ async function createWindow() {
 	function showMainWindowOnce() {
 		if (createdWindow.isDestroyed() || hasShownMainWindow) return;
 		hasShownMainWindow = true;
+		// Windows 任务栏可能在 BrowserWindow 构造后才创建壳层按钮；显示前再次发送
+		// WM_SETICON，确保开发态 electron.exe 不沿用同一 AppUserModelID 的旧品牌缓存。
+		if (process.platform === "win32") createdWindow.setIcon(windowIconPath);
 		createdWindow.show();
 		createdWindow.focus();
 		// 向开发者工具输出启动信息

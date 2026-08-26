@@ -15,6 +15,10 @@ import {
 	DialogTitle,
 } from "../ui-shadcn/dialog";
 import { t } from "../../i18n";
+import {
+	HYDROZAGENT_NEW_ISSUE_URL,
+	HYDROZAGENT_REPOSITORY_URL,
+} from "../../brandLinks";
 import type { AppInfo, FeedbackEnvironment, Project } from "../../../../shared/types";
 
 export type FeedbackOverlayProps = {
@@ -76,7 +80,7 @@ export function FeedbackOverlay({ open, project, appInfo, loadEnvironment, onClo
 	if (!open) return null;
 	const summary = description.trim().split("\n")[0].slice(0, 60);
 	const issueTitle = `${t("feedback.issueTitle")}${summary || t("feedback.issueTitleEmpty")}`;
-	const issueUrl = `https://github.com/ayuayue/pi-desktop/issues/new?title=${encodeURIComponent(issueTitle)}&body=${encodeURIComponent(report)}`;
+	const issueUrl = `${HYDROZAGENT_NEW_ISSUE_URL}?title=${encodeURIComponent(issueTitle)}&body=${encodeURIComponent(report)}`;
 	const copyReport = async () => { await navigator.clipboard.writeText(report); onCopy?.(); };
 	return (
 		<Dialog open onOpenChange={(next) => !next && onClose()}>
@@ -114,7 +118,7 @@ export function FeedbackOverlay({ open, project, appInfo, loadEnvironment, onClo
 				/>
 				<pre className="feedback-environment-content">{report}</pre></div>
 			</div>
-			<div className="feedback-actions"><Button variant="secondary" onClick={() => void copyReport()}>{t("feedback.copyReport")}</Button><Button variant="secondary" onClick={() => void onOpenExternal("https://github.com/ayuayue")}>{t("feedback.authorGithub")}</Button><Button variant="default" onClick={() => void onOpenExternal(issueUrl)}>{t("feedback.openIssue")}</Button></div>
+			<div className="feedback-actions"><Button variant="secondary" onClick={() => void copyReport()}>{t("feedback.copyReport")}</Button><Button variant="secondary" onClick={() => void onOpenExternal(HYDROZAGENT_REPOSITORY_URL)}>{t("feedback.authorGithub")}</Button><Button variant="default" onClick={() => void onOpenExternal(issueUrl)}>{t("feedback.openIssue")}</Button></div>
 		
 			</DialogContent>
 		</Dialog>

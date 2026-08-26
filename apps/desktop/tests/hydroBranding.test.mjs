@@ -6,6 +6,15 @@ const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const rendererHtml = readFileSync("src/renderer/index.html", "utf8");
 const mainSource = readFileSync("src/main/index.ts", "utf8");
 const appSource = readFileSync("src/renderer/src/App.tsx", "utf8");
+const brandLinks = readFileSync("src/renderer/src/brandLinks.ts", "utf8");
+const browserPanel = readFileSync(
+  "src/renderer/src/components/app/BrowserPanel.tsx",
+  "utf8",
+);
+const sessionActionOverlays = readFileSync(
+  "src/renderer/src/components/overlays/SessionActionOverlays.tsx",
+  "utf8",
+);
 const viteSource = readFileSync("electron.vite.config.ts", "utf8");
 const settingsLayout = readFileSync(
   "src/renderer/src/components/app/settings/settingsTabLayout.ts",
@@ -31,12 +40,26 @@ test("Windows runtime and tray use hydroZagent assets instead of Electron defaul
   assert.match(mainSource, /const windowIconPath = process\.platform === "win32" \? iconIcoPath : iconPngPath/);
   assert.match(mainSource, /app\.setName\("浙水智能体"\)/);
   assert.match(mainSource, /icon: windowIconPath/);
+  assert.match(mainSource, /createdWindow\.setIcon\(windowIconPath\)/);
   assert.match(mainSource, /tray\.setToolTip\("浙水智能体"\)/);
 });
 
 test("welcome tagline and capability chips stay hidden above the composer", () => {
   assert.match(welcomeHeader, /<p hidden className=/);
   assert.match(welcomeHeader, /<div\s+hidden\s+className="mt-4 flex flex-wrap/);
+});
+
+test("homepage and feedback links use the hydroZagent brand destinations", () => {
+  assert.match(brandLinks, /https:\/\/www\.zihe\.zj\.cn\//);
+  assert.match(
+    brandLinks,
+    /https:\/\/github\.com\/BaoyingShan0\/community-hydroagent\//,
+  );
+  assert.match(appSource, /openExternal\(HYDRO_INSTITUTE_HOMEPAGE_URL, true\)/);
+  assert.match(browserPanel, /const DEFAULT_HOME = HYDRO_INSTITUTE_HOMEPAGE_URL/);
+  assert.match(sessionActionOverlays, /HYDROZAGENT_REPOSITORY_URL/);
+  assert.match(sessionActionOverlays, /HYDROZAGENT_NEW_ISSUE_URL/);
+  assert.doesNotMatch(sessionActionOverlays, /ayuayue/);
 });
 
 test("lightweight distribution keeps pi and LAN Web while removing DSH and pet entry points", () => {

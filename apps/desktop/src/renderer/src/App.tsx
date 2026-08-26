@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { applyAppearanceAttributes } from "./themeAppearance";
+import { HYDRO_INSTITUTE_HOMEPAGE_URL } from "./brandLinks";
 // 壁纸模式已注入的 token 键（effect 重跑/清除设置时需要跨运行保留，避免漏清）
 let injectedWallpaperTokens = new Set<string>();
 // 自定义外观主题（customThemeOverrides）已注入的 token 键：切换主题时先清后注，防残留
@@ -2759,7 +2760,7 @@ export function App() {
       settingsLoaded={settingsLoaded}
       onExpandedProjectsReady={() => setExpandedProjectsReady(true)}
       // 官网主页是品牌入口，强制系统浏览器打开：不受「链接打开方式=内置浏览器」设置影响
-      onOpenHomepage={() => void api.app.openExternal("https://github.com/BaoyingShan0/community-hydroagent", true)}
+      onOpenHomepage={() => void api.app.openExternal(HYDRO_INSTITUTE_HOMEPAGE_URL, true)}
     />
   );
 

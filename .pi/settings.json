@@ -2,7 +2,6 @@
   "packages": [
     "npm:@juicesharp/rpiv-btw",
     "npm:@juicesharp/rpiv-ask-user-question",
-    "npm:@juicesharp/rpiv-todo",
     "npm:pi-lens",
     "npm:pi-mcp-adapter",
     "npm:@narumitw/pi-goal",
