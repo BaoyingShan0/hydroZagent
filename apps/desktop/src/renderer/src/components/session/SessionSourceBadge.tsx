@@ -3,6 +3,7 @@ import type { AgentBackend, SessionSource } from "../../../../shared/types";
 import { ImageIcon } from "lucide-react";
 import { t } from "../../i18n";
 import { cn } from "../../lib/utils";
+import { HydroBrandMark } from "../app/HydroBrandMark";
 import { Badge } from "../ui-shadcn/badge";
 
 const SOURCE_LABELS: Record<SessionSource, string> = {
@@ -52,29 +53,16 @@ function SourceLogo(props: { source: SessionSource }) {
     );
   }
 
-  return (
-    <svg viewBox="140 140 520 520" className="size-3.5" aria-hidden="true" focusable="false">
-      <path
-        fill="currentColor"
-        fillRule="evenodd"
-        d="M165.29 165.29H517.36V400H400v117.36H282.65V634.72H165.29ZM282.65 282.65V400H400V282.65Z"
-      />
-      <path fill="currentColor" d="M517.36 400H634.72V634.72H517.36Z" />
-    </svg>
-  );
+  return <HydroAgentLogo />;
 }
 
-/** pi 官方 logo（品牌窗口标记，来源徽章同款）。 */
-export function PiLogo(props: { className?: string }) {
+/** 浙水智能体运行时标识：用于默认 Pi 引擎的来源徽章、回复头像和输入框。 */
+export function HydroAgentLogo(props: { className?: string }) {
   return (
-    <svg viewBox="140 140 520 520" className={props.className ?? "size-3.5"} aria-hidden="true" focusable="false">
-      <path
-        fill="currentColor"
-        fillRule="evenodd"
-        d="M165.29 165.29H517.36V400H400v117.36H282.65V634.72H165.29ZM282.65 282.65V400H400V282.65Z"
-      />
-      <path fill="currentColor" d="M517.36 400H634.72V634.72H517.36Z" />
-    </svg>
+    <HydroBrandMark
+      size={14}
+      className={cn("rounded-[28%] shadow-sm", props.className)}
+    />
   );
 }
 

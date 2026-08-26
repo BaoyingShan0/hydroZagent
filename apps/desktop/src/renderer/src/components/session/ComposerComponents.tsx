@@ -52,7 +52,7 @@ import { ComposerImageGenOptions } from "./ComposerImageGenOptions";
 import { useComposerModeAvailability } from "../../hooks/useComposerModeAvailability";
 import type { ImageGenConfigFile } from "../../../../shared/imageGenConfig";
 import { SessionContextMeter } from "./SessionContextMeter";
-import { DshLogo, PiLogo } from "./SessionSourceBadge";
+import { DshLogo, HydroAgentLogo } from "./SessionSourceBadge";
 import {
 	Select,
 	SelectContent,
@@ -221,12 +221,12 @@ export function ComposerBackendPicker(props: {
 				) : props.backend === "imagegen" ? (
 					<ImageIcon className="size-[15px] shrink-0 text-muted-foreground" />
 				) : (
-					<PiLogo className="size-[15px] shrink-0" />
+					<HydroAgentLogo className="size-[15px] shrink-0" />
 				)}
 			</SelectTrigger>
 			<SelectContent align="start">
 				<SelectItem value="pi">
-					<PiLogo className="size-3.5 shrink-0" />
+					<HydroAgentLogo className="size-3.5 shrink-0" />
 					{t("sessionSource.pi")}
 				</SelectItem>
 				<SelectItem value="dsh">
@@ -461,7 +461,7 @@ export function ComposerBottomBar(props: {
 							) : props.backend === "imagegen" ? (
 								<ImageIcon className="size-[15px] shrink-0 text-muted-foreground" />
 							) : (
-								<PiLogo className="size-[15px] shrink-0" />
+								<HydroAgentLogo className="size-[15px] shrink-0" />
 							)}
 						</button>
 					) : null}

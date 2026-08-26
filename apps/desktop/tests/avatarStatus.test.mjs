@@ -39,11 +39,10 @@ test("all project rows omit aggregate running and history counts", () => {
   }
 });
 
-test("default theme is neutral while green remains an explicit option", () => {
-  // 默认 neutral accent = shadcn zinc primary（浅色近黑 #18181b），保证主按钮不是中灰
-  assert.match(themePresets, /\{ id: "default", labelKey: "settings\.accent\.default", preview: "#18181b" \}/);
+test("default theme uses the hydro brand accent while green remains optional", () => {
+  assert.match(themePresets, /\{ id: "default", labelKey: "settings\.accent\.default", preview: "#3f7180" \}/);
   assert.match(themePresets, /\{ id: "green", labelKey: "settings\.accent\.green", preview: "#4a7854" \}/);
-  assert.match(foundation, /--color-accent: #18181b;/);
+  assert.match(foundation, /--color-accent: #3f7180;/);
   assert.match(foundation, /:root\[data-accent="green"\][\s\S]*--color-accent: #4a7854;/);
 });
 

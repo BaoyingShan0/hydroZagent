@@ -1,21 +1,21 @@
 /**
  * WebBrandLockup — Web 端品牌区（与桌面 AppParts.BrandLockup 同视觉）。
  *
- * 不直接复用 AppParts.BrandLockup 是为了避免把桌面端整棵渲染组件树
- * （SurfaceComponents / atoms / desktopApi 等）拖进 Web 包；这里只复用
- * 自包含的 PiLogoCanvas（仅依赖 React hooks + CSS 变量，无变量时回退）。
+ * 不直接复用 AppParts.BrandLockup，避免把桌面端整棵组件树拖进 Web 包；
+ * 仅复用自包含的浙水智能体母标与 i18n 品牌名。
  */
-import { PiLogoCanvas } from "../components/app/PiLogoCanvas";
+import { HydroBrandMark } from "../components/app/HydroBrandMark";
+import { t } from "../i18n";
 
 export function WebBrandLockup() {
 	return (
-		<div className="brand-lockup flex h-9 min-w-0 items-center gap-2.5" aria-label="PiDeck">
-			<PiLogoCanvas size={18} autoPlay playOnClick />
+		<div className="brand-lockup flex h-9 min-w-0 items-center gap-2.5" aria-label={t("app.logoLabel")}>
+			<HydroBrandMark size={22} className="rounded-md shadow-sm" />
 			<span
-				className="brand-wordmark translate-x-0.5 truncate text-[18px] font-[PiDeckDepartureMono] font-normal uppercase leading-none text-zinc-950 dark:text-white"
+				className="brand-wordmark truncate text-[15px] font-semibold tracking-[0.08em] text-[#294853] dark:text-[#dceef2]"
 				aria-hidden="true"
 			>
-				PiDeck
+				{t("app.brandName")}
 			</span>
 		</div>
 	);

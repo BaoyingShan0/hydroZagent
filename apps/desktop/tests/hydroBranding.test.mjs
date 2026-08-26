@@ -12,6 +12,10 @@ const settingsLayout = readFileSync(
   "utf8",
 );
 const configModal = readFileSync("src/renderer/src/ConfigModal.tsx", "utf8");
+const welcomeHeader = readFileSync(
+  "src/renderer/src/components/session/HydroWelcomeHeader.tsx",
+  "utf8",
+);
 
 test("hydroZagent brand identity is consistent across package and boot surface", () => {
   assert.equal(packageJson.name, "hydrozagent");
@@ -19,6 +23,11 @@ test("hydroZagent brand identity is consistent across package and boot surface",
   assert.equal(packageJson.build.appId, "com.hydrozagent.app");
   assert.match(rendererHtml, /<strong class="boot-title">浙水智能体<\/strong>/);
   assert.match(rendererHtml, /AI 赋能水利 · 智慧守护江河/);
+});
+
+test("welcome tagline and capability chips stay hidden above the composer", () => {
+  assert.match(welcomeHeader, /<p hidden className=/);
+  assert.match(welcomeHeader, /<div\s+hidden\s+className="mt-4 flex flex-wrap/);
 });
 
 test("lightweight distribution keeps pi and LAN Web while removing DSH and pet entry points", () => {

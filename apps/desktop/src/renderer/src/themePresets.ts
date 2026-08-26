@@ -21,9 +21,8 @@ export type AccentPreset = {
 };
 
 export const ACCENT_PRESETS: readonly AccentPreset[] = [
-	// 出厂默认使用黑白灰；绿色保留为显式可选主题，避免默认界面被高饱和色占据。
-	// preview 与 foundation.css 的默认 --color-accent 保持一致（浅色 zinc-900 近黑）。
-	{ id: "default", labelKey: "settings.accent.default", preview: "#18181b" },
+	// 出厂默认使用浙水青碧；preview 与 foundation.css 的默认 --color-accent 保持一致。
+	{ id: "default", labelKey: "settings.accent.default", preview: "#3f7180" },
 	// 绿色预览与 foundation.css 的森系绿主色保持一致（#4a7854，参考 Proma 森息配色）。
 	{ id: "green", labelKey: "settings.accent.green", preview: "#4a7854" },
 	{ id: "blue", labelKey: "settings.accent.blue", preview: "#2563eb" },
@@ -81,15 +80,14 @@ export const SKIN_PRESETS: readonly SkinPreset[] = [
 		id: "classic-green",
 		labelKey: "settings.skin.classicGreen",
 		descKey: "settings.skin.classicGreenDesc",
-		// 出厂默认：中性黑白灰（表面 = :root 默认中性白灰，无 CSS 覆盖块；
-		// 主色 = data-accent="default" 的近黑/近白），与旧版出厂观感一致。
+		// 出厂默认：米白与浅青表面，主色使用浙水青碧。
 		accent: "default",
 		preview: "#ffffff",
 		previewSurfaces: {
 			background: "#ffffff",
 			sidebar: "#ffffff",
 			panel: "#fafafa",
-			accent: "#18181b",
+			accent: "#3f7180",
 			border: "#dfdfdf",
 		},
 	},
@@ -119,7 +117,7 @@ export const SKIN_PRESETS: readonly SkinPreset[] = [
 			background: "#ececec",
 			sidebar: "#e3e3e3",
 			panel: "#f8f8f8",
-			accent: "#18181b",
+			accent: "#3f7180",
 			border: "#d0d0d0",
 		},
 	},
@@ -153,5 +151,5 @@ export const SKIN_PRESETS: readonly SkinPreset[] = [
 	},
 ];
 
-/** 出厂外观主题：classic-green（中性黑白灰，与旧版出厂观感一致） */
+/** 出厂外观主题：classic-green（浙水智能体青碧品牌基线） */
 export const DEFAULT_SKIN: AppSkinId = "classic-green";

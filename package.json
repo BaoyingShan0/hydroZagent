@@ -14,6 +14,7 @@
 	],
 	"scripts": {
 		"desktop:dev": "node scripts/dev-desktop.mjs",
+		"desktop:install": "npm --prefix apps/desktop install --ignore-scripts && node apps/desktop/node_modules/electron/install.js",
 		"desktop:prepare": "npm run build:offline",
 		"desktop:check": "npm --prefix apps/desktop run typecheck",
 		"desktop:test": "npm --prefix apps/desktop test",

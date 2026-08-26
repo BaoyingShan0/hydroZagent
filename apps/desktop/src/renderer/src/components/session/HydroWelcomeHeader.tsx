@@ -22,10 +22,14 @@ export function HydroWelcomeHeader() {
           hydroZagent
         </span>
       </div>
-      <p className="mt-2 text-sm tracking-[0.08em] text-text-secondary">
+      <p hidden className="mt-2 text-sm tracking-[0.08em] text-text-secondary">
         {t("hydro.welcome.tagline")}
       </p>
-      <div className="mt-4 flex flex-wrap justify-center gap-2" aria-label={t("hydro.welcome.capabilities")}>
+      <div
+        hidden
+        className="mt-4 flex flex-wrap justify-center gap-2"
+        aria-label={t("hydro.welcome.capabilities")}
+      >
         {CAPABILITIES.map(({ key, icon: Icon }) => (
           <span
             key={key}

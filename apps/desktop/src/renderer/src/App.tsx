@@ -37,6 +37,7 @@ const ConfigModal = lazy(() => import("./ConfigModal").then((m) => ({ default: m
 import { type SidebarActions } from "./components/sidebar/SidebarContent";
 import { AppSidebar } from "./components/sidebar/AppSidebar";
 import { AppBootstrap } from "./components/app/AppBootstrap";
+import { HydroBrandMark } from "./components/app/HydroBrandMark";
 import { SettingsFeatureRoot } from "./components/app/SettingsFeatureRoot";
 import { useRename } from "./hooks/useRename";
 import { useProjectRuntimeCapabilities } from "./hooks/useRuntimeCapabilities";
@@ -190,25 +191,11 @@ export function App() {
   if (missingElectronPreload) {
     return (
       <div className="boot-screen root-loading">
-        {/* 与 EmptyState / index.html 启动标同一套 π path */}
+        {/* preload 异常页仍使用产品母标，避免故障路径回退到上游 Pi 品牌。 */}
         <div className="boot-logo root-loading-logo" aria-hidden="true">
-          <svg viewBox="140 140 520 520" width="48" height="48">
-            <defs>
-              <linearGradient id="root-loading-logo-silver" x1="0.2" y1="0" x2="0.8" y2="1">
-                <stop stopColor="#ffffff" />
-                <stop offset="0.5" stopColor="#f4f4f5" />
-                <stop offset="1" stopColor="#a7a8ab" />
-              </linearGradient>
-            </defs>
-            <path
-              fill="url(#root-loading-logo-silver)"
-              fillRule="evenodd"
-              d="M165.29 165.29H517.36V400H400V517.36H282.65V634.72H165.29ZM282.65 282.65V400H400V282.65Z"
-            />
-            <path fill="url(#root-loading-logo-silver)" d="M517.36 400H634.72V634.72H517.36Z" />
-          </svg>
+          <HydroBrandMark size={120} />
         </div>
-        <strong className="text-[40px] font-bold tracking-[0.06em]">PiDeck</strong>
+        <strong className="text-[40px] font-bold tracking-[0.06em]">{t("app.brandName")}</strong>
         <span>{t("app.preloadMissing")}</span>
       </div>
     );
@@ -1551,7 +1538,8 @@ export function App() {
       .then((info) => {
         setAppInfo(info);
         // 与窗口标题一致：开发态功能分支时文档标题带分支名
-        document.title = info.devBranch ? `PiDeck · ${info.devBranch}` : "PiDeck";
+        const brandName = t("app.brandName");
+        document.title = info.devBranch ? `${brandName} · ${info.devBranch}` : brandName;
       })
       .catch(() => undefined);
     void api.imagegen.getConfig().then(setImageGenConfig).catch(() => undefined);
@@ -2771,7 +2759,7 @@ export function App() {
       settingsLoaded={settingsLoaded}
       onExpandedProjectsReady={() => setExpandedProjectsReady(true)}
       // 官网主页是品牌入口，强制系统浏览器打开：不受「链接打开方式=内置浏览器」设置影响
-      onOpenHomepage={() => void api.app.openExternal("https://ayuayue.github.io/PiDeck/", true)}
+      onOpenHomepage={() => void api.app.openExternal("https://github.com/BaoyingShan0/community-hydroagent", true)}
     />
   );
 

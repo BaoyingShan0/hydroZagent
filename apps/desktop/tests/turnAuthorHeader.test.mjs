@@ -26,7 +26,7 @@ test("TurnAuthorHeader uses shadcn Avatar logos without a visible name", () => {
   assert.match(header, /from "\.\.\/\.\.\/ui-shadcn\/avatar"/);
   assert.match(header, /<Avatar title=\{name\}/);
   assert.match(header, /<AvatarFallback/);
-  assert.match(header, /<PiLogo/);
+  assert.match(header, /<HydroAgentLogo/);
   assert.match(header, /<DshLogo/);
   assert.match(header, /data-turn-author=\{backend\}/);
   // 缺省按 pi 处理，兼容旧调用方不传 backend

@@ -78,6 +78,7 @@ import {
 	flattenFiles,
 } from "../app/AppUtils";
 import { Textarea } from "../ui-shadcn/textarea";
+import { HydroBrandMark } from "../app/HydroBrandMark";
 import {
   Tooltip,
   TooltipContent,
@@ -461,14 +462,7 @@ export function AgentAvatar(props: { status: string }) {
 	return (
 		<div className={`conversation-avatar agent-avatar avatar-status-${normalizedStatus}`} data-avatar-status={normalizedStatus}>
 			<span className="agent-avatar-mark" aria-hidden="true">
-			<svg viewBox="140 140 520 520" width="28" height="28" aria-hidden="true">
-				<path
-					fill="#fff"
-					fillRule="evenodd"
-					d="M165.29 165.29H517.36V400H400V517.36H282.65V634.72H165.29ZM282.65 282.65V400H400V282.65Z"
-				/>
-				<path fill="#fff" d="M517.36 400H634.72V634.72H517.36Z" />
-			</svg>
+				<HydroBrandMark size={28} className="rounded-[28%]" />
 			</span>
 			<span className="avatar-status-indicator" aria-label={normalizedStatus}>
 				{normalizedStatus === "error" ? <CircleAlert size={8} strokeWidth={2.5} /> : normalizedStatus === "starting" ? <CircleDot size={8} strokeWidth={2.5} /> : normalizedStatus === "running" ? <LoaderCircle size={8} strokeWidth={2.5} className="animate-spin" /> : <Check size={8} strokeWidth={2.5} />}

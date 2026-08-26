@@ -26,11 +26,13 @@
 
 ## 开发
 
+日常边使用边修改的完整流程见[《边使用边开发指南》](docs/iterative-development-guide.md)。
+
 需要 Node.js 22.19 或更高版本。首次运行：
 
 ```bash
 npm install --ignore-scripts
-npm --prefix apps/desktop install --ignore-scripts
+npm run desktop:install
 npm run desktop:prepare
 npm run desktop:dev
 ```

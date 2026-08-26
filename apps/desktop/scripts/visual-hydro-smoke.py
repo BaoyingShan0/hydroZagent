@@ -34,8 +34,8 @@ with sync_playwright() as playwright:
     capability = page.locator("[aria-label='水利业务能力']")
     if capability.count() == 0:
         raise AssertionError("Hydro welcome surface missing. Rendered text:\n" + page.locator("body").inner_text()[:4_000])
-    capability.wait_for(state="visible")
-    page.locator("text=AI 赋能水利 · 智慧守护江河").wait_for(state="visible")
+    capability.wait_for(state="hidden")
+    page.locator("text=AI 赋能水利 · 智慧守护江河").wait_for(state="hidden")
     if console_errors:
         raise AssertionError("Renderer console errors:\n" + "\n".join(console_errors))
     browser.close()

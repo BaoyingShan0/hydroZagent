@@ -358,7 +358,7 @@ export const DevTab = memo(function DevTab(props: DevTabProps) {
         <SettingRow
           title={
             <>
-              <span>PiDeck</span>
+              <span>{t("app.brandName")}</span>
               <span className="text-caption font-normal text-muted-foreground">v{props.appInfo.version}</span>
             </>
           }

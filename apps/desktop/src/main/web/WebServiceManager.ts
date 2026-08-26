@@ -292,7 +292,7 @@ export class WebServiceManager {
 			if (url.pathname === "/api/health") {
 				this.sendJson(response, {
 					ok: true,
-					service: "PiDeck",
+					service: "hydroZagent",
 					host,
 					port: this.getPort(server, port),
 				});
@@ -798,11 +798,11 @@ export class WebServiceManager {
 
 	private renderPage() {
 		return `<!doctype html>
-<html lang="en-US">
+<html lang="zh-CN">
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title>PiDeck Web Service</title>
+	<title>浙水智能体 · 内网共享</title>
 	<style>
 		:root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 		body { margin: 0; background: #f4f6f8; color: #252a31; }
@@ -811,20 +811,24 @@ export class WebServiceManager {
 		main { display: grid; grid-template-rows: auto 1fr auto; min-width: 0; }
 		header { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 18px; border-bottom: 1px solid #dfe5ee; background: #fff; }
 		h1 { margin: 0; font-size: 16px; }
+		.brand-lockup { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; color: #294853; }
+		.brand-lockup svg { width: 34px; height: 34px; flex: 0 0 auto; border-radius: 9px; box-shadow: 0 5px 14px rgba(54,87,99,.18); }
+		.brand-copy { display: grid; gap: 2px; min-width: 0; }
+		.brand-copy small { color: #6a8790; font-size: 8px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
 		.status { font-size: 12px; color: #687280; }
 		.list { display: grid; gap: 8px; }
 		button { border: 1px solid #d7dce4; background: #fff; border-radius: 8px; padding: 8px 10px; color: #252a31; cursor: pointer; transition: transform .12s ease, border-color .12s ease, background .12s ease, opacity .12s ease; }
 		button:hover:not(:disabled) { transform: translateY(-1px); border-color: #b8c2d0; }
-		button.primary { border-color: #14a514; background: #14a514; color: #fff; min-width: 88px; font-weight: 700; }
-		button.primary:hover:not(:disabled) { background: #129212; border-color: #129212; }
+		button.primary { border-color: #365763; background: #365763; color: #fff; min-width: 88px; font-weight: 700; }
+		button.primary:hover:not(:disabled) { background: #294853; border-color: #294853; }
 		button.danger { color: #d93025; border-color: #f1b9b9; background: #fff7f7; }
 		button.ghost { color: #687280; background: #f8fafc; }
 		.header-actions { display: flex; align-items: center; gap: 8px; }
 		.header-actions button { height: 34px; padding: 0 12px; }
 		button:disabled { opacity: .6; cursor: not-allowed; }
 		.item { text-align: left; display: grid; gap: 3px; min-width: 0; }
-		.item.loading { border-color: #14a514; background: #f0fdf4; }
-		.item.active { border-color: #14a514; box-shadow: 0 0 0 2px rgba(20,165,20,.12); }
+		.item.loading { border-color: #6fafc0; background: #edf5f6; }
+		.item.active { border-color: #6fafc0; box-shadow: 0 0 0 2px rgba(111,175,192,.18); }
 		.item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 		.item small { color: #687280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 		.section-title { margin: 18px 0 8px; color: #687280; font-size: 12px; font-weight: 700; }
@@ -838,9 +842,9 @@ export class WebServiceManager {
 		.role { display: block; margin-bottom: 4px; font-size: 11px; font-weight: 700; color: #687280; }
 		.streaming-thinking { margin: 6px 0; padding: 6px 10px; border-left: 3px solid #b8c2d0; background: #f1f4f8; color: #687280; font-size: 12px; white-space: pre-wrap; line-height: 1.5; }
 		.streaming-tool { margin: 6px 0; padding: 6px 10px; border: 1px solid #dfe5ee; border-radius: 6px; background: #fbfcfe; font-size: 12px; color: #46505e; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-		.streaming-tool .tool-name { font-weight: 700; color: #14a514; }
+		.streaming-tool .tool-name { font-weight: 700; color: #365763; }
 		.streaming-tool.error .tool-name { color: #d93025; }
-		.caret { display: inline-block; width: 7px; height: 14px; margin-left: 2px; vertical-align: -2px; background: #14a514; animation: blink 1s steps(2) infinite; }
+		.caret { display: inline-block; width: 7px; height: 14px; margin-left: 2px; vertical-align: -2px; background: #6fafc0; animation: blink 1s steps(2) infinite; }
 		@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 		.composer { display: grid; gap: 8px; padding: 12px; border-top: 1px solid #dfe5ee; background: #fff; }
 		.composer-box { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; border: 1px solid #d7dce4; border-radius: 10px; padding: 8px; background: #fff; }
@@ -848,7 +852,7 @@ export class WebServiceManager {
 		.composer-actions { display: flex; align-items: center; gap: 8px; }
 		.composer-hint { color: #8a94a6; font-size: 12px; padding-left: 4px; }
 		.empty { margin: auto; color: #687280; text-align: center; }
-		.pulse { display: inline-flex; width: 8px; height: 8px; border-radius: 999px; background: #14a514; animation: pulse 1s infinite ease-in-out; margin-right: 6px; }
+		.pulse { display: inline-flex; width: 8px; height: 8px; border-radius: 999px; background: #6fafc0; animation: pulse 1s infinite ease-in-out; margin-right: 6px; }
 		@keyframes pulse { 0%, 100% { opacity: .35; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
 		@media (max-width: 760px) { .app { grid-template-columns: 1fr; } aside { max-height: 42vh; border-right: 0; border-bottom: 1px solid #dfe5ee; } }
 	</style>
@@ -856,7 +860,16 @@ export class WebServiceManager {
 <body>
 	<div class="app">
 		<aside>
-			<h1>PiDeck</h1>
+			<div class="brand-lockup" aria-label="浙水智能体">
+				<svg viewBox="0 0 120 120" aria-hidden="true">
+					<defs><linearGradient id="hydro-web-mark" x1="18" y1="12" x2="102" y2="108" gradientUnits="userSpaceOnUse"><stop stop-color="#365763"/><stop offset=".62" stop-color="#4f8290"/><stop offset="1" stop-color="#6fafc0"/></linearGradient></defs>
+					<rect width="120" height="120" rx="28" fill="url(#hydro-web-mark)"/>
+					<path d="M60 18c-13 18-29 34-29 54a29 29 0 0 0 58 0c0-20-16-36-29-54Z" fill="none" stroke="#f7f8f7" stroke-width="5" stroke-linejoin="round"/>
+					<path d="M40 61c9-7 18-7 27 0s18 7 27 0M36 73c10-7 20-7 30 0s20 7 30 0M41 85c8-5 16-5 24 0s16 5 24 0" fill="none" stroke="#f7f8f7" stroke-width="5" stroke-linecap="round"/>
+					<circle cx="60" cy="45" r="4" fill="#c94f45"/>
+				</svg>
+				<div class="brand-copy"><h1>浙水智能体</h1><small>hydroZagent</small></div>
+			</div>
 			<div id="projects-title" class="section-title"></div>
 			<div id="projects" class="list"></div>
 			<div id="sessions-title" class="section-title"></div>

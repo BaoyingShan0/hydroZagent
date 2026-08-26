@@ -1,7 +1,7 @@
 import type { AgentBackend } from "../../../../../shared/types";
 import { t } from "../../../i18n";
 import { Avatar, AvatarFallback } from "../../ui-shadcn/avatar";
-import { DshLogo, PiLogo } from "../SessionSourceBadge";
+import { DshLogo, HydroAgentLogo } from "../SessionSourceBadge";
 import { formatTime } from "../TimelineFormat";
 
 /**
@@ -34,7 +34,7 @@ export function TurnAuthorHeader(props: {
 					{isDsh ? (
 						<DshLogo className="size-4" />
 					) : (
-						<PiLogo className="size-4" />
+						<HydroAgentLogo className="size-4" />
 					)}
 				</AvatarFallback>
 			</Avatar>
