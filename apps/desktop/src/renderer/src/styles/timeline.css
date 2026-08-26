@@ -101,13 +101,10 @@
   will-change: transform, opacity;
 }
 .user-turn-bubble {
-  border-color: color-mix(in srgb, var(--color-accent) 16%, var(--color-border));
-  background: color-mix(in srgb, var(--color-accent) 4%, var(--color-bg-muted));
   box-shadow: 0 2px 8px color-mix(in srgb, var(--color-text-primary) 5%, transparent);
-  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
 }
 .user-turn-bubble:hover {
-  border-color: color-mix(in srgb, var(--color-accent) 34%, var(--color-border));
   box-shadow: 0 4px 12px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
 }
 /* 已可见的助手正文不再因 turn-row--fresh 重播收回动画。
@@ -448,16 +445,13 @@
   50% { opacity: 1; transform: translateY(-2px) scale(1); }
 }
 
-/* ---------- 工具行：ToolCard ----------
- * Codex / Cursor / Claude 把思考与工具都做成过程行，不是卡片。
- * 外框、面板底、hover 投影、running 描边会让工具比思考「更像一块 UI」，
- * 时间线密度也被盒子撑开。统一无框：身份靠图标/状态色/扫光，展开靠左竖线。 */
+/* ---------- 工具卡：统一白色面板与语义边框，状态继续由图标、文字和徽标共同表达。 */
 .tool-card {
   width: 100%;
   min-width: 0;
-  border: 0;
+  border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
-  background: transparent;
+  background: var(--color-bg-panel);
   /* 内容型 Ask 工具卡不能裁掉长问题/答案；展开内容由时间线滚动容器承载。 */
   overflow: visible;
 }

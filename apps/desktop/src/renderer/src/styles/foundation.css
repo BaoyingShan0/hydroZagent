@@ -547,7 +547,7 @@
  * 每套外观主题覆盖「表面/边框/文字/会话面板」色板；主色由 data-accent 提供
  * （选择外观主题时设置页联动写入 settings.accent → data-accent，复用上方各主色块）。
  * - 明暗由 data-theme 负责：浅色走 `[data-appearance="…"]`，暗色走 `[data-theme="dark"][data-appearance="…"]`；
- * - classic-green 为出厂默认（=当前 :root 中性浅色，黑白灰主色），无覆盖块；
+ * - classic-green 为浙水品牌默认，色板独立收口在 hydro-brand.css；
  * - fresh-green 为全屏绿色主题：表面/边框/文字全部带品牌亮绿（#2cb35c 系）调；
  * - 新增主题需同步 themePresets.ts 的 SKIN_PRESETS（id/预览）与本文件色块，保证 id 集合一致。
  * 注意：这些是纯自定义属性定义，不包 @layer（契约见 tests/cssCascadeLayers.test.mjs）。

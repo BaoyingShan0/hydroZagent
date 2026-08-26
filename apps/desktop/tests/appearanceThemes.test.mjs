@@ -4,6 +4,8 @@ import test from "node:test";
 import { loadTsCommonJs } from "./helpers/loadTsCommonJs.mjs";
 
 const foundation = readFileSync("src/renderer/src/styles/foundation.css", "utf8");
+const hydroBrand = readFileSync("src/renderer/src/styles/hydro-brand.css", "utf8");
+const themeCss = `${foundation}\n${hydroBrand}`;
 const zhCN = readFileSync("src/renderer/src/i18n/rendererCopy.zh-CN.ts", "utf8");
 const enUS = readFileSync("src/renderer/src/i18n/rendererCopy.en-US.ts", "utf8");
 
@@ -74,28 +76,31 @@ test("SKIN_PRESETS is complete and DEFAULT is classic-green", () => {
     assert.ok(preset.accent.length > 0, preset.id);
     assert.ok(preset.preview.startsWith("#"), preset.id);
     for (const key of ["background", "sidebar", "panel", "accent", "border"]) {
-      assert.ok(preset.previewSurfaces[key].startsWith("#"), `${preset.id}.${key}`);
+      assert.ok(
+        preset.previewSurfaces[key].startsWith("#") || preset.previewSurfaces[key].startsWith("color-mix("),
+        `${preset.id}.${key}`,
+      );
     }
   }
 });
 
-test("CSS data-appearance blocks exist for every non-default skin, light + dark", () => {
-  const { light, dark } = parseAppearanceBlocks(foundation);
-  const builtIn = SKIN_PRESETS.filter((preset) => preset.id !== "classic-green").map(
-    (preset) => preset.id,
-  );
+test("CSS data-appearance blocks include the light-only Hydro brand and alternate light/dark skins", () => {
+  const { light, dark } = parseAppearanceBlocks(themeCss);
+  const builtIn = SKIN_PRESETS.map((preset) => preset.id);
   for (const id of builtIn) {
     assert.ok(light[id], `missing light block for [data-appearance="${id}"]`);
-    assert.ok(dark[id], `missing dark block for [data-theme="dark"][data-appearance="${id}"]`);
+    if (id !== "classic-green") {
+      assert.ok(dark[id], `missing dark block for [data-theme="dark"][data-appearance="${id}"]`);
+    }
   }
   // 不许出现 SKIN_PRESETS 里没有的 id（防色块与配置脱节）
   const allCssIds = [...new Set([...Object.keys(light), ...Object.keys(dark)])];
-  assert.deepEqual(allCssIds.sort(), [...builtIn].sort());  // 默认主题不强制覆盖块，但也绝不能被错误地声明（默认观感即 :root）
-  assert.ok(!light["classic-green"], "classic-green must not declare an appearance block");
+  assert.deepEqual(allCssIds.sort(), [...builtIn].sort());
+  assert.ok(!dark["classic-green"], "Hydro brand must not invent a dark palette");
 });
 
 test("every appearance block repaints the full palette (surfaces/text/borders/chat)", () => {
-  const { light, dark } = parseAppearanceBlocks(foundation);
+  const { light, dark } = parseAppearanceBlocks(themeCss);
   for (const [id, body] of Object.entries(light)) {
     for (const token of REQUIRED_THEME_TOKENS) {
       assert.ok(body.includes(token), `light ${id} missing ${token}`);
@@ -112,7 +117,7 @@ test("each skin's bundled accent maps to an existing data-accent block", () => {
   for (const preset of SKIN_PRESETS) {
     if (preset.accent === "default") continue; // 默认中性主色 = :root base，无独立块
     assert.match(
-      foundation,
+      themeCss,
       new RegExp(`:root\\[data-accent="${preset.accent}"\\]`),
       `missing data-accent block for skin ${preset.id} → accent ${preset.accent}`,
     );

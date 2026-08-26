@@ -22,7 +22,7 @@ export type AccentPreset = {
 
 export const ACCENT_PRESETS: readonly AccentPreset[] = [
 	// 出厂默认使用浙水青碧；preview 与 foundation.css 的默认 --color-accent 保持一致。
-	{ id: "default", labelKey: "settings.accent.default", preview: "#3f7180" },
+	{ id: "default", labelKey: "settings.accent.default", preview: "#5b6a76" },
 	// 绿色预览与 foundation.css 的森系绿主色保持一致（#4a7854，参考 Proma 森息配色）。
 	{ id: "green", labelKey: "settings.accent.green", preview: "#4a7854" },
 	{ id: "blue", labelKey: "settings.accent.blue", preview: "#2563eb" },
@@ -48,8 +48,8 @@ export const DEFAULT_ACCENT: AppAccentMode = "default";
  *   本文件不再重复存一份色值（避免两份色板漂移）；
  * - 主色：经 `data-accent` 联动——选择外观主题时设置页同时写入本次的 accent 字段，
  *   复用既有 `:root[data-accent="…"]` 各主色块；
- * - classic-green 为出厂默认：无表面覆盖块（= :root 当前中性浅色观感），
- *   主色 = data-accent="default"（黑白灰），保持旧版出厂观感不变；
+ * - classic-green 为浙水品牌默认：表面色板集中在 hydro-brand.css，固定浅色；
+ *   主色 = data-accent="default"（青碧），内部 id 保留以兼容旧设置；
  * - fresh-green 为全屏森系绿主题：纸感浅绿表面 + 鼠尾草绿主色（CSS 覆盖块），
  *   主色 = data-accent="green"（#4a7854）。
  *
@@ -80,15 +80,15 @@ export const SKIN_PRESETS: readonly SkinPreset[] = [
 		id: "classic-green",
 		labelKey: "settings.skin.classicGreen",
 		descKey: "settings.skin.classicGreenDesc",
-		// 出厂默认：米白与浅青表面，主色使用浙水青碧。
+		// 浙水品牌：严格对应设计图的米白主区、深青侧栏、青碧主操作。
 		accent: "default",
-		preview: "#ffffff",
+		preview: "#5b6a76",
 		previewSurfaces: {
-			background: "#ffffff",
-			sidebar: "#ffffff",
-			panel: "#fafafa",
-			accent: "#3f7180",
-			border: "#dfdfdf",
+			background: "#f7f8f7",
+			sidebar: "#5b6a76",
+			panel: "#ffffff",
+			accent: "#6fafc0",
+			border: "color-mix(in srgb, #5b6a76 18%, transparent)",
 		},
 	},
 	{
@@ -117,7 +117,7 @@ export const SKIN_PRESETS: readonly SkinPreset[] = [
 			background: "#ececec",
 			sidebar: "#e3e3e3",
 			panel: "#f8f8f8",
-			accent: "#3f7180",
+			accent: "#5b6a76",
 			border: "#d0d0d0",
 		},
 	},

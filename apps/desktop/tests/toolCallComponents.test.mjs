@@ -36,18 +36,16 @@ test("tool and thinking disclosure icons use right-for-collapsed down-for-expand
   assert.match(toolCalls, /\{expanded \? \([\s\S]*<ChevronDown[\s\S]*\) : \([\s\S]*<ChevronRight/);
 });
 
-test("tool rows share thinking's borderless process-row chrome", () => {
-  // Codex/Cursor 把思考与工具都做成过程行。卡片边框/面板底会让工具比思考更「块」。
-  assert.doesNotMatch(
+test("tool rows use the Hydro brand's quiet white cards and semantic borders", () => {
+  assert.match(
     toolCalls,
     /className=\{`tool-card[\s\S]*?border border-border-subtle bg-bg-panel/,
   );
   const css = readFileSync("src/renderer/src/styles/timeline.css", "utf8");
   const cardRule = css.match(/\.tool-card \{[\s\S]*?\n\}/)?.[0] ?? "";
   assert.ok(cardRule, ".tool-card rule must exist");
-  assert.match(cardRule, /border:\s*0/);
-  assert.match(cardRule, /background:\s*transparent/);
-  assert.doesNotMatch(cardRule, /border:\s*1px/);
+  assert.match(cardRule, /border:\s*1px solid var\(--color-border-subtle\)/);
+  assert.match(cardRule, /background:\s*var\(--color-bg-panel\)/);
   // skill 身份改走图标色，不再给整行铺紫色底（那是卡片语言）
   const skillRule = css.match(/\.tool-card--skill \{[\s\S]*?\n\}/)?.[0] ?? "";
   assert.match(skillRule, /background:\s*transparent/);
@@ -57,13 +55,12 @@ test("tool rows share thinking's borderless process-row chrome", () => {
 test("thinking and tool logos keep a distinct color even on the default zinc theme", () => {
   // 默认主题会把 brand-purple 洗成灰；过程行 logo 必须用独立 token，否则和 tertiary 糊在一起。
   const css = readFileSync("src/renderer/src/styles/timeline.css", "utf8");
-  const foundation = readFileSync("src/renderer/src/styles/foundation.css", "utf8");
+  const hydroBrand = readFileSync("src/renderer/src/styles/hydro-brand.css", "utf8");
   const cards = readFileSync("src/renderer/src/components/session/TimelineEventCards.tsx", "utf8");
   const web = readFileSync("src/renderer/src/web/WebTimeline.tsx", "utf8");
-  assert.match(foundation, /--color-thinking:\s*#6366f1/);
-  assert.match(foundation, /--color-thinking:\s*#818cf8/);
+  assert.match(hydroBrand, /--color-thinking:\s*var\(--hydro-lake\)/);
   assert.match(css, /\.thinking-row-icon \{[\s\S]*?color:\s*var\(--color-thinking\)/);
-  assert.match(css, /\.tool-card-icon \{[\s\S]*?color:\s*var\(--color-info\)/);
+  assert.match(css, /\.tool-card-icon \{[\s\S]*?color:\s*var\(--color-tool\)/);
   const skillIcon = css.match(/\.tool-card--skill \.tool-card-icon \{[\s\S]*?\n\}/)?.[0] ?? "";
   assert.match(skillIcon, /color:\s*var\(--color-thinking\)/);
   assert.doesNotMatch(skillIcon, /--color-brand-purple/);

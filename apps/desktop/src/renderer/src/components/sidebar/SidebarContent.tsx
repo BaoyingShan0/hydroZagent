@@ -146,6 +146,7 @@ export function SidebarContent(props: SidebarContentProps) {
       // 决定 hover 时文本是否压缩让位（pr 留出按钮空间 + 截断，见各树的 @max-[255px] 变体），
       // 不用把宽度穿进树组件
       className="chat-list-pane v3-braun @container flex h-full min-w-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground"
+      data-hydro-sidebar
       aria-label={t("app.search")}
     >
       {/* 品牌区提到 body 外：贴侧栏顶边，不被 sidebar-body 的 px/py 顶开（logo 怼左上）。 */}
@@ -163,7 +164,7 @@ export function SidebarContent(props: SidebarContentProps) {
               value={controller.search}
               onChange={(event) => controller.setSearch(event.target.value)}
               placeholder={t("app.search")}
-              className="h-6 pl-7 text-caption"
+              className="h-6 pl-7 text-[11px] placeholder:text-muted-foreground/60"
             />
           </div>
           <Button

@@ -326,9 +326,8 @@ export const ToolCard = memo(function ToolCard(props: {
 			contentClassName="pb-1"
 		>
 		<section
-			// 无框过程行（与 ThinkingBlock 同一语言）：边框/面板底由 timeline.css 的
-			// .tool-card 保证为 0/transparent，这里不再叠 border / bg-bg-panel。
-			className={`tool-card w-full min-w-0 tone-${tone}${isSkillRead ? " tool-card--skill" : ""}${isAskCard ? " tool-card--ask" : ""}${status === "running" ? " tool-card--running" : ""}`}
+			// 品牌主题统一使用白色工具卡和青碧透明边界，展开能力与状态表达保持不变。
+			className={`tool-card w-full min-w-0 border border-border-subtle bg-bg-panel px-2 py-1 tone-${tone}${isSkillRead ? " tool-card--skill" : ""}${isAskCard ? " tool-card--ask" : ""}${status === "running" ? " tool-card--running" : ""}`}
 			data-status={status}
 			data-tool-kind={isSkillRead ? "skill" : getToolKind(toolName)}
 			data-message-id={props.message.id}

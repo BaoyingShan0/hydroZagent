@@ -28,9 +28,8 @@ export function SessionStartSurface(props: {
   return (
     // session-start-surface 保留类名供壁纸模式契约（bg-transparent 透出下层壁纸）；
     // pt-[18vh] 把重心压向视口中心（输入框顶约 36-40%、框心 ~55%），接近 DeepSeek
-    // 新会话页；[--font-size-input] 在容器作用域放大输入框字号（14→15.5px），
-    // 只影响本页，不改全局 token（会话页输入框保持原尺寸）。
-    <div className="session-start-surface relative flex min-h-full w-full flex-col items-center gap-5 overflow-hidden bg-transparent px-6 pb-10 pt-[9vh] [--font-size-input:15.5px] [--line-height-input:25px]">
+    // 新会话页沿用品牌正文 14/22，不另造第五档字号。
+    <div className="session-start-surface relative flex min-h-full w-full flex-col items-center gap-5 overflow-hidden bg-transparent px-6 pb-10 pt-[9vh] [--font-size-input:14px] [--line-height-input:22px]">
       <HydroWelcomeBackdrop />
       <HydroWelcomeHeader />
       <div className="relative z-10">{props.projectSwitcher}</div>

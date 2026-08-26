@@ -3,7 +3,7 @@
  * 独立于主窗口 renderer；通过 /api/* 与主进程 WebServiceManager 通信。
  *
  * 重构后与桌面端共享同一套样式基座（styles.css → foundation/timeline/surfaces/
- * tailwind token），并按 prefers-color-scheme 设置 data-theme 启用暗色模式。
+ * tailwind token）。局域网 Web 与桌面端共用浙水品牌浅色规范。
  */
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -17,13 +17,9 @@ import { WebChatApp } from "./web/WebChatApp";
 setI18nLocale(resolveLocale("system"));
 document.documentElement.lang = resolveLocale("system") === "zh-CN" ? "zh-CN" : "en-US";
 
-// 暗色模式：跟随系统 prefers-color-scheme，映射到 foundation.css 的 data-theme
-const darkMedia = window.matchMedia("(prefers-color-scheme: dark)");
-function applyTheme() {
-	document.documentElement.dataset.theme = darkMedia.matches ? "dark" : "light";
-}
-applyTheme();
-darkMedia.addEventListener("change", applyTheme);
+document.documentElement.dataset.appearance = "classic-green";
+document.documentElement.dataset.accent = "default";
+document.documentElement.dataset.theme = "light";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

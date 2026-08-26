@@ -1021,8 +1021,10 @@ function clearThemeScheduleTimer(): void {
 
 function applyNativeThemeSource(settings: AppSettings) {
 	// 原生标题栏不受 renderer CSS 影响；跟随应用主题，避免暗色界面顶部仍是系统浅色栏。
-	// Electron nativeTheme.themeSource 只认 system/light/dark；跟随时间先解析再写入。
-	nativeTheme.themeSource = settings.theme === "system"
+	// 浙水品牌没有暗色规范，原生窗口 chrome 也固定浅色；切换其他皮肤后恢复原偏好。
+	nativeTheme.themeSource = settings.themeSkin === "classic-green"
+		? "light"
+		: settings.theme === "system"
 		? "system"
 		: resolveAppColorScheme({
 			theme: settings.theme,
@@ -1032,7 +1034,7 @@ function applyNativeThemeSource(settings: AppSettings) {
 		});
 	clearThemeScheduleTimer();
 	// 跟随时间：睡到下一次浅色/暗色边界再刷标题栏，避免每分钟轮询。
-	if (settings.theme === "schedule") {
+	if (settings.themeSkin !== "classic-green" && settings.theme === "schedule") {
 		const delay = msUntilNextThemeBoundary(
 			new Date(),
 			settings.themeScheduleLightStart,
@@ -1721,13 +1723,15 @@ async function createWindow() {
 	// 根据用户的主题设置选择窗口背景色，避免系统标题栏与暗色主题间出现浅色条带。
 	// 色值与 foundation.css 的 light/dark 基底保持一致（暖白 / 暖黑）。
 	const windowThemeSettings = settingsStore.get();
-	const isDark = resolveAppColorScheme({
+	const isDark = windowThemeSettings.themeSkin !== "classic-green" && resolveAppColorScheme({
 		theme: windowThemeSettings.theme,
 		themeScheduleLightStart: windowThemeSettings.themeScheduleLightStart,
 		themeScheduleDarkStart: windowThemeSettings.themeScheduleDarkStart,
 		systemPrefersDark: nativeTheme.shouldUseDarkColors,
 	}) === "dark";
-	const backgroundColor = isDark ? "#121212" : "#f8f8f5";
+	const backgroundColor = windowThemeSettings.themeSkin === "classic-green"
+		? "#f7f8f7"
+		: isDark ? "#121212" : "#f8f8f5";
 
 	// 按外观设置的启动预设调整初始尺寸；隐藏态先 maximize/fullscreen，减少首帧跳动。
 	// startupWindowMode="last"：读上次关闭时的窗口大小；读不到（首次启动/记录损坏）顺延默认 maximized

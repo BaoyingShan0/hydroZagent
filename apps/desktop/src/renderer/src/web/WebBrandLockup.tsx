@@ -12,7 +12,7 @@ export function WebBrandLockup() {
 		<div className="brand-lockup flex h-9 min-w-0 items-center gap-2.5" aria-label={t("app.logoLabel")}>
 			<HydroBrandMark size={22} className="rounded-md shadow-sm" />
 			<span
-				className="brand-wordmark truncate text-[15px] font-semibold tracking-[0.08em] text-[#294853] dark:text-[#dceef2]"
+				className="brand-wordmark truncate font-brand text-body font-medium tracking-[0.08em] text-foreground"
 				aria-hidden="true"
 			>
 				{t("app.brandName")}

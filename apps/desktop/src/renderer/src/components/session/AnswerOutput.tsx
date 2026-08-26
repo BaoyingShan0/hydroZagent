@@ -27,9 +27,9 @@ function answerOutputClassName(variant: AnswerOutputVariant): string {
 	// 折叠区 gap 为 0：settled 中间段必须自己留空，否则贴着思考/工具行。
 	// live 挂在折叠容器外，父级 flex gap-3 已经分隔，不能再叠 mt-3。
 	if (variant === "process") {
-		return "execution-interim markdown-body my-3 text-chat text-text-primary";
+		return "execution-interim markdown-body my-3 text-chat rounded-lg border border-border-subtle bg-[color:color-mix(in_srgb,var(--color-info)_8%,var(--color-bg-panel))] px-3 py-2 text-text-primary";
 	}
-	return "execution-interim markdown-body text-chat text-text-primary";
+	return "execution-interim markdown-body text-chat text-text-primary rounded-lg border border-border-subtle bg-[color:color-mix(in_srgb,var(--color-info)_8%,var(--color-bg-panel))] px-3 py-2";
 }
 
 /**

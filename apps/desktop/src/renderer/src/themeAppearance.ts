@@ -29,7 +29,8 @@ export function applyAppearanceAttributes(
 		themeScheduleDarkStart: settings.themeScheduleDarkStart,
 		systemPrefersDark,
 	});
-	root.dataset.theme = resolvedTheme;
+	// 品牌视觉规范只提供浅色方案；保留用户原主题偏好，但 classic-green 渲染固定为浅色。
+	root.dataset.theme = settings.themeSkin === "classic-green" ? "light" : resolvedTheme;
 	root.dataset.appearance = settings.themeSkin;
 	const skinPreset = SKIN_PRESETS.find((p) => p.id === settings.themeSkin);
 	const effectiveAccent =

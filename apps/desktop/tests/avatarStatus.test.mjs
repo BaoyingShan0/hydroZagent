@@ -10,6 +10,7 @@ const agentAvatar = readFileSync("src/renderer/src/components/session/SurfaceCom
 const foundation = readFileSync("src/renderer/src/styles/foundation.css", "utf8");
 const workspaceStyles = readFileSync("src/renderer/src/styles/workspace.css", "utf8");
 const themePresets = readFileSync("src/renderer/src/themePresets.ts", "utf8");
+const hydroBrand = readFileSync("src/renderer/src/styles/hydro-brand.css", "utf8");
 
 test("project Avatar does not aggregate session runtime state", () => {
   assert.doesNotMatch(projectTree, /const projectAgents = props\.controller\.catalog\.agents\.filter/);
@@ -40,9 +41,9 @@ test("all project rows omit aggregate running and history counts", () => {
 });
 
 test("default theme uses the hydro brand accent while green remains optional", () => {
-  assert.match(themePresets, /\{ id: "default", labelKey: "settings\.accent\.default", preview: "#3f7180" \}/);
+  assert.match(themePresets, /\{ id: "default", labelKey: "settings\.accent\.default", preview: "#5b6a76" \}/);
   assert.match(themePresets, /\{ id: "green", labelKey: "settings\.accent\.green", preview: "#4a7854" \}/);
-  assert.match(foundation, /--color-accent: #3f7180;/);
+  assert.match(hydroBrand, /--color-accent: var\(--hydro-qing\);/);
   assert.match(foundation, /:root\[data-accent="green"\][\s\S]*--color-accent: #4a7854;/);
 });
 

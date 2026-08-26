@@ -14,7 +14,7 @@ export type AppAccentMode = "default" | "green" | "blue" | "purple" | "amber" | 
 /**
  * 外观主题（皮肤）：覆盖表面/边框/文字色板 + 自带推荐主色，明暗自适应。
  * 内置主题在 themePresets.ts SKIN_PRESETS 定义；custom 由 customThemeOverrides 驱动。
- * classic-green 为出厂默认（中性黑白灰）；fresh-green 为全屏绿色主题（表面带绿色调）。
+ * classic-green 为出厂默认（浙水品牌浅色规范）；fresh-green 为全屏绿色主题（表面带绿色调）。
  */
 export type AppSkinId =
 	| "classic-green"

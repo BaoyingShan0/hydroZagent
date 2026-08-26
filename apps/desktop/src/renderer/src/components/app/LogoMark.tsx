@@ -10,7 +10,7 @@ export function LogoMark({ size = 32 }: { size?: number } = {}) {
 		<HydroBrandMark
 			size={size}
 			label={t("app.logoLabel")}
-			className="logo-mark rounded-[22%] shadow-[0_10px_26px_rgba(54,87,99,0.18)] ring-1 ring-white/30"
+			className="logo-mark rounded-[22%] shadow-sm ring-1 ring-white/30"
 		/>
 	);
 }

@@ -843,6 +843,7 @@ export function registerSystemIpc(deps: SystemIpcDeps): void {
 		}
 		if (
 			"theme" in patch
+			|| "themeSkin" in patch
 			|| "themeScheduleLightStart" in patch
 			|| "themeScheduleDarkStart" in patch
 		) {

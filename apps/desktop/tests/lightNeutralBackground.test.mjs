@@ -11,16 +11,15 @@ function block(selector) {
   return match[1];
 }
 
-test("light theme background tokens are neutral (no green tint)", () => {
-  // 大面积背景为纯白基底（#113 中性化改版：灰只用于控件表面/hover/选中层级，均不得带色相）
-  assert.match(block(":root"), /--color-bg-app:\s*#ffffff;/i);
-  assert.match(block(":root"), /--color-bg-sidebar:\s*#ffffff;/i);
-  assert.match(block(":root"), /--color-bg-panel:\s*#ffffff;/i);
-  assert.match(block(":root"), /--color-bg-muted:\s*#f4f4f5;/i);
-  assert.match(block(":root"), /--color-bg-hover:\s*#e5e7eb;/i);
-  assert.match(block(":root"), /--color-bg-active:\s*#dfe3e8;/i);
-  // 边框也中性化（修复前 #e5e5df 系带黄绿调）
-  assert.match(block(":root"), /--color-border-subtle:\s*#e5e5e5;/i);
-  assert.match(block(":root"), /--color-border-default:\s*#dfdfdf;/i);
-  assert.match(block(":root"), /--color-border-strong:\s*#d7d7d7;/i);
+test("Hydro brand uses rice-white workspace, deep-qing sidebar, and derived surfaces", () => {
+  const brand = block(':root[data-appearance="classic-green"]');
+  assert.match(brand, /--color-bg-app:\s*var\(--hydro-rice\);/i);
+  assert.match(brand, /--color-bg-sidebar:\s*var\(--hydro-qing\);/i);
+  assert.match(brand, /--color-bg-panel:\s*#fff;/i);
+  assert.match(brand, /--color-bg-muted:\s*color-mix\(/i);
+  assert.match(brand, /--color-bg-hover:\s*color-mix\(/i);
+  assert.match(brand, /--color-bg-active:\s*color-mix\(/i);
+  assert.match(brand, /--color-border-subtle:\s*color-mix\(/i);
+  assert.match(brand, /--color-border-default:\s*color-mix\(/i);
+  assert.match(brand, /--color-border-strong:\s*color-mix\(/i);
 });

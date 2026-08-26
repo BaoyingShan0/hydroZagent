@@ -41,7 +41,7 @@ export function ProjectEmptyState(props: {
           <HydroWelcomeHeader />
           <Button
             size="lg"
-            className="relative z-10 h-12 rounded-xl bg-[#365763] px-8 text-sm text-white shadow-[0_10px_28px_rgba(54,87,99,0.2)] hover:bg-[#294853]"
+            className="relative z-10 h-12 rounded-xl bg-primary px-8 text-body text-primary-foreground shadow-sm hover:bg-[var(--color-accent-strong)]"
             onClick={props.onAddProject}
           >
             <Plus className="size-5" aria-hidden="true" />

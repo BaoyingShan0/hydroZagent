@@ -90,20 +90,27 @@ export const AppearanceTab = memo(function AppearanceTab(props: AppearanceTabPro
           }
           alignEnd={false}
         >
-          <Select value={draft.theme} onValueChange={(value) =>
-              updateDraft({ theme: value as AppSettings["theme"] })
-            }>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {themeOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value} disabled={option.disabled}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex w-full flex-col gap-1.5">
+            <Select value={draft.theme} onValueChange={(value) =>
+                updateDraft({ theme: value as AppSettings["theme"] })
+              }>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {themeOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value} disabled={option.disabled}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {draft.themeSkin === "classic-green" && (
+              <p className="m-0 text-caption leading-[18px] text-text-tertiary">
+                {t("settings.skin.brandLightOnly")}
+              </p>
+            )}
+          </div>
         </SettingRow>
-        {draft.theme === "schedule" && (
+        {draft.theme === "schedule" && draft.themeSkin !== "classic-green" && (
           <SettingRow
             title={
               <>

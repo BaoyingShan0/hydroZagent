@@ -674,7 +674,7 @@ export const AssistantText = memo(
 		// 半截 markdown 由 remend 容错补全，不再需要旧管线的流式/静态双路径切换。
 		return (
 			<div
-				className="assistant-text markdown-body"
+				className="assistant-text markdown-body rounded-lg border border-border-subtle bg-[color:color-mix(in_srgb,var(--color-info)_8%,var(--color-bg-panel))] px-3 py-2"
 				data-settle={props.settle ? "1" : undefined}
 			>
 				{props.images && props.images.length > 0 && (
@@ -1129,7 +1129,7 @@ export const UserBubble = memo(function UserBubble(props: {
 				</div>
 			)}
 			{cleanText && !editing && (
-				<div className="user-turn-bubble w-fit min-w-0 max-w-[min(82%,64ch)] rounded-[14px] border border-border bg-muted/60 px-3 py-2 text-sm text-foreground [overflow-wrap:anywhere] break-words">
+				<div className="user-turn-bubble w-fit min-w-0 max-w-[min(82%,64ch)] rounded-[14px] border border-border bg-card px-3 py-2 text-body text-foreground [overflow-wrap:anywhere] break-words">
 					<div
 						ref={userTextRef}
 						className={`text-chat text-text-primary whitespace-pre-wrap break-words ${messageExpanded ? "" : "line-clamp-8"}`}

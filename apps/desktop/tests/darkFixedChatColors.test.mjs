@@ -12,14 +12,11 @@ function block(selector) {
   return match[1];
 }
 
-test("fixed light chat/table colors are tokenized for dark mode", () => {
-  // 暖白基底：浅色卡片近白底，暗色对齐暖黑系
-  assert.match(block(":root"), /--color-chat-card-bg:\s*#fafafa;/i);
-  assert.match(block(":root"), /--color-chat-muted-bg:\s*#f4f4f5;/i);
-  assert.match(block(":root"), /--color-chat-table-bg:\s*#ffffff;/i);
-  assert.match(block(":root[data-theme=\"dark\"]"), /--color-chat-card-bg:\s*#171717;/i);
-  assert.match(block(":root[data-theme=\"dark\"]"), /--color-chat-muted-bg:\s*#202020;/i);
-  assert.match(block(":root[data-theme=\"dark\"]"), /--color-chat-table-bg:\s*#171717;/i);
+test("Hydro brand chat/table surfaces use its fixed light semantic palette", () => {
+  const brand = block(':root[data-appearance="classic-green"]');
+  assert.match(brand, /--color-chat-card-bg:\s*#fff;/i);
+  assert.match(brand, /--color-chat-muted-bg:\s*color-mix\(/i);
+  assert.match(brand, /--color-chat-table-bg:\s*#fff;/i);
 
   assert.match(block(".diagnostic-card"), /background:\s*var\(--color-chat-muted-bg\);/);
   // 用户气泡规则在 #113 会话动画改版中重新引入；要求只使用语义 token（color-mix + var），

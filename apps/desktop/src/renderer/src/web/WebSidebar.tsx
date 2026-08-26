@@ -26,7 +26,7 @@ const sessionRowClass =
 	"conversation agent-row relative flex min-h-7 w-full items-center gap-1.5 rounded-md border border-transparent px-2 py-0 text-left text-body text-foreground shadow-none transition-[background-color,border-color] duration-200 hover:border-border-subtle hover:bg-muted/60 hover:text-foreground";
 
 /** 与桌面 SessionTree 一致：只有当前会话灰底，父项目行不加选中态。 */
-const selectedRowClass = "active bg-bg-active text-foreground";
+const selectedRowClass = "active bg-bg-active text-foreground before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-full before:bg-danger";
 
 /** 与桌面 ProjectTree 相同的项目目录名展示：chat 项目显示「聊天」，其余取路径末段。 */
 function displayProjectName(project: WebProject): string {
@@ -241,6 +241,7 @@ export function WebSidebar(props: {
 					"chat-list-pane flex h-full min-w-0 flex-col overflow-hidden border-r border-border bg-sidebar text-sidebar-foreground",
 					mobileOpen && "mobile-open",
 				)}
+				data-hydro-sidebar
 				aria-label={t("app.search")}
 			>
 			{/* 品牌区提到 body 外，与桌面侧栏一致贴顶 */}

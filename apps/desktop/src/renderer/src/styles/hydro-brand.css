@@ -1,0 +1,134 @@
+@font-face {
+  font-family: "Source Han Sans SC";
+  src: url("../assets/fonts/SourceHanSansCN-VF.woff2") format("woff2-variations");
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+}
+
+/*
+ * 浙水品牌视觉唯一真源。
+ * 固定彩色值只允许来自《浙水智能体整体设计方案.png》的青碧、湖蓝、朱砂红、米白；
+ * 其余层级全部由这四个颜色与白/黑/透明度派生。
+ */
+:root[data-appearance="classic-green"] {
+  color-scheme: light;
+
+  --hydro-qing: #5b6a76;
+  --hydro-lake: #6fafc0;
+  --hydro-vermilion: #c94f45;
+  --hydro-rice: #f7f8f7;
+  /* 青碧深墨：正文 / 标题 / 输入主色。青碧作「骨」偏浅，直接当正文色在米白底上
+     对比不足（约 4.8:1，输入文字发虚、大标题发灰）；由青碧掺黑派生一档深墨专供
+     text-primary，白底约 8:1 清晰可读，青碧本身仍留给结构、品牌与图标。
+     只用中性黑派生，不引入第五个固定彩色，保持品牌四色契约。 */
+  --hydro-ink: color-mix(in srgb, var(--hydro-qing) 58%, #000);
+
+  --font-family-base:
+    "Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei UI",
+    "Microsoft YaHei", "PingFang SC", sans-serif;
+  --font-family-brand: "Source Han Sans SC", "Noto Sans CJK SC", sans-serif;
+
+  --font-size-micro: 12px;
+  --font-size-caption: 12px;
+  --font-size-control: 14px;
+  --font-size-body: 14px;
+  --font-size-chat: 14px;
+  --font-size-input: 14px;
+  --font-size-title: 20px;
+  --font-size-brand: 20px;
+  --font-size-heading: 20px;
+  --font-size-logo: 28px;
+  --line-height-micro: 18px;
+  --line-height-caption: 18px;
+  --line-height-control: 22px;
+  --line-height-body: 22px;
+  --line-height-chat: 1.57;
+  --line-height-input: 22px;
+  --line-height-title: 28px;
+  --line-height-heading: 28px;
+
+  --color-bg-app: var(--hydro-rice);
+  --color-bg-sidebar: var(--hydro-qing);
+  --color-bg-panel: #fff;
+  --color-bg-popover: #fff;
+  --color-bg-input: #fff;
+  --color-bg-muted: color-mix(in srgb, var(--hydro-lake) 10%, var(--hydro-rice));
+  --color-bg-hover: color-mix(in srgb, var(--hydro-lake) 8%, var(--hydro-rice));
+  --color-bg-active: color-mix(in srgb, var(--hydro-lake) 14%, var(--hydro-rice));
+  --color-text-primary: var(--hydro-ink);
+  --color-text-secondary: color-mix(in srgb, var(--hydro-ink) 66%, transparent);
+  --color-text-tertiary: color-mix(in srgb, var(--hydro-ink) 44%, transparent);
+  --color-text-inverse: #fff;
+  --color-sidebar-text: #fff;
+  --color-border-subtle: color-mix(in srgb, var(--hydro-qing) 10%, transparent);
+  --color-border-default: color-mix(in srgb, var(--hydro-qing) 18%, transparent);
+  --color-border-strong: color-mix(in srgb, var(--hydro-qing) 28%, transparent);
+
+  --color-accent: var(--hydro-qing);
+  --color-accent-strong: color-mix(in srgb, var(--hydro-qing) 88%, #000);
+  --color-accent-soft: color-mix(in srgb, var(--hydro-lake) 14%, var(--hydro-rice));
+  --color-brand-green: var(--hydro-qing);
+  --color-brand-blue: var(--hydro-lake);
+  --color-brand-purple: var(--hydro-qing);
+  --color-brand-amber: var(--hydro-vermilion);
+  --color-brand-rose: var(--hydro-vermilion);
+  --color-logo-green: var(--hydro-lake);
+  --color-logo-green-mid: color-mix(in srgb, var(--hydro-qing) 55%, var(--hydro-lake));
+  --color-logo-green-deep: var(--hydro-qing);
+
+  --color-danger: var(--hydro-vermilion);
+  --color-danger-soft: color-mix(in srgb, var(--hydro-vermilion) 10%, var(--hydro-rice));
+  --color-success: var(--hydro-lake);
+  --color-success-soft: color-mix(in srgb, var(--hydro-lake) 10%, var(--hydro-rice));
+  --color-success-strong: var(--hydro-qing);
+  --color-warning: var(--hydro-vermilion);
+  --color-info: var(--hydro-lake);
+  --color-tool: var(--hydro-lake);
+  --color-thinking: var(--hydro-lake);
+
+  --color-chat-card-bg: #fff;
+  --color-chat-muted-bg: color-mix(in srgb, var(--hydro-lake) 8%, var(--hydro-rice));
+  --color-chat-control-bg: #fff;
+  --color-chat-table-bg: #fff;
+  --color-chat-link: var(--hydro-qing);
+  --color-ai-soft: color-mix(in srgb, var(--hydro-lake) 8%, #fff);
+
+  --shadow-border: 0 0 0 1px color-mix(in srgb, #000 5%, transparent);
+  --shadow-popover: 0 6px 18px color-mix(in srgb, #000 9%, transparent);
+  --shadow-modal: 0 16px 36px color-mix(in srgb, #000 11%, transparent);
+  --shadow-composer: 0 1px 2px color-mix(in srgb, #000 5%, transparent);
+  --shadow-composer-lifted: 0 4px 18px color-mix(in srgb, #000 6%, transparent);
+  --shadow-drawer: -4px 0 12px color-mix(in srgb, #000 6%, transparent);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--hydro-lake) 28%, transparent);
+  --brand-wordmark-gradient: linear-gradient(90deg, var(--hydro-qing), var(--hydro-qing));
+  --brand-wordmark-underline: linear-gradient(
+    90deg,
+    var(--hydro-lake),
+    color-mix(in srgb, var(--hydro-lake) 48%, transparent),
+    transparent
+  );
+  --logo-boot-gradient: linear-gradient(145deg, var(--hydro-qing), var(--hydro-lake));
+  --logo-mark-gradient: linear-gradient(145deg, var(--hydro-qing), var(--hydro-lake));
+}
+
+/* 深青侧栏在局部重新绑定语义 token，让既有 shadcn/Tailwind 组件自然反色。 */
+:root[data-appearance="classic-green"] [data-hydro-sidebar] {
+  --color-bg-app: var(--hydro-qing);
+  --color-bg-panel: var(--hydro-qing);
+  --color-bg-popover: #fff;
+  --color-bg-input: color-mix(in srgb, #fff 8%, var(--hydro-qing));
+  --color-bg-muted: color-mix(in srgb, #fff 8%, var(--hydro-qing));
+  --color-bg-hover: color-mix(in srgb, #fff 8%, var(--hydro-qing));
+  --color-bg-active: color-mix(in srgb, #fff 14%, var(--hydro-qing));
+  --color-text-primary: #fff;
+  --color-text-secondary: color-mix(in srgb, #fff 72%, transparent);
+  --color-text-tertiary: color-mix(in srgb, #fff 48%, transparent);
+  --color-border-subtle: color-mix(in srgb, #fff 10%, transparent);
+  --color-border-default: color-mix(in srgb, #fff 18%, transparent);
+  --color-border-strong: color-mix(in srgb, #fff 28%, transparent);
+  --color-accent: var(--hydro-lake);
+  --color-accent-strong: #fff;
+  --color-accent-soft: color-mix(in srgb, #fff 14%, var(--hydro-qing));
+  --color-danger-soft: color-mix(in srgb, var(--hydro-vermilion) 18%, var(--hydro-qing));
+}

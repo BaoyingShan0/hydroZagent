@@ -36,8 +36,8 @@ const sourceBadge = readFileSync(
 
 test("sidebar child rows use shared official hover/active classes", () => {
   assert.match(sessionTree, /hover:border-border-subtle hover:bg-muted\/60 hover:text-foreground/);
-  // 选中态对标 dsh-web：只有叶子会话灰底，无 accent / 描边 / 阴影。
-  assert.match(sessionTree, /selectedRowClass = "active bg-bg-active text-foreground"/);
+  // 只有叶子会话使用选中底，并以朱砂红 2px 标记强化当前位置。
+  assert.match(sessionTree, /selectedRowClass = "active bg-bg-active text-foreground[^"\n]*before:w-0\.5[^"\n]*before:bg-danger"/);
   assert.doesNotMatch(sessionTree, /bg-accent\/20/);
   assert.match(sessionTree, /sessionRowClass/);
   assert.match(projectTree, /treeRowClass/);

@@ -140,7 +140,7 @@ test("window control hover uses solid hover surface", () => {
 test("brand lockup is larger inside the 40px titlebar", () => {
   // 品牌区：浙水智能体水滴江河母标 + 中英文字标；
   // 功能分支时分支名只保留在 title/aria-label，不上视觉
-  assert.match(brand, /HydroBrandMark size=\{22\}/);
+  assert.match(brand, /HydroBrandMark size=\{30\}/);
   assert.match(brand, /brand-wordmark/);
   assert.match(brand, /\$\{t\("app\.brandName"\)\} · \$\{branch\}/);
   assert.match(sidebar, /list-toolbar flex h-10/);

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 
 const styleSources = [
   "src/renderer/src/styles/foundation.css",
+  "src/renderer/src/styles/hydro-brand.css",
   "src/renderer/src/styles/timeline.css",
   "src/renderer/src/styles/surfaces.css",
   "src/renderer/src/styles/integrations.css",
