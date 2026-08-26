@@ -46,6 +46,9 @@ export function HydroWelcomeHeader() {
 /**
  * 江南水系背景：底部铺《浙水智能体整体设计方案》配套的水墨流水底图
  * （青碧湖蓝渐隐 + AI 数据流意象），顶部自然融进米白留白，呼应「留白为境」。
+ *
+ * 用视口相对高度 + object-cover 贴底，让引导页与真实会话起始页（容器高度不同）
+ * 里水纹落点一致；顶部再叠一层渐隐蒙版，无论裁切与否都柔和融进米白，不出硬边。
  */
 export function HydroWelcomeBackdrop() {
   return (
@@ -54,7 +57,7 @@ export function HydroWelcomeBackdrop() {
         src={welcomeBackdrop}
         alt=""
         aria-hidden="true"
-        className="absolute inset-x-0 bottom-0 w-full select-none opacity-40"
+        className="absolute inset-x-0 bottom-0 h-[42vh] w-full select-none object-cover object-bottom opacity-40 [mask-image:linear-gradient(to_bottom,transparent_0%,#000_38%)]"
       />
     </div>
   );

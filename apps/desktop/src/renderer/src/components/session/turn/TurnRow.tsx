@@ -381,7 +381,7 @@ export const TurnRow = memo(
 					</div>
 				))}
 
-				{/* 操作栏 */}
+				{/* 操作栏：按钮 + 尾部耗时同行 */}
 				{mergedText && !editing && (
 					<div className="flex min-h-6 items-center gap-1 opacity-55 transition-opacity hover:opacity-100 focus-within:opacity-100">
 						{!containsImageGen && <CopyMenu
@@ -429,24 +429,30 @@ export const TurnRow = memo(
 									)}
 								</>
 							)}
+						{/* 耗时：紧跟删除按钮，与操作按钮同行对齐，不另起一行 */}
+						{showDuration && (
+							<span className="ml-1 flex items-center gap-1 text-[11px] leading-none tabular-nums text-muted-foreground/70">
+								<Clock size={11} className="shrink-0" aria-hidden="true" />
+								{isRunLive ? (
+									<LiveDuration startedAt={run.startedAt} isStreaming />
+								) : (
+									formatDuration(duration)
+								)}
+							</span>
+						)}
 					</div>
 				)}
 
-				{/* 尾部耗时：回复生成中由 LiveDuration 实时计时（100ms 连续跳动，用户视线在底部），
-				    回复结束后固定为总耗时。全轮只有一个耗时显示点（行头只留时间戳），
-				    避免开头结尾重复；无最终回答的轮（纯工具/思考）同样可见。 */}
-				{showDuration && (
-					<div className="flex items-center gap-1.5 text-muted-foreground">
-						<Clock size={12} className="shrink-0" aria-hidden="true" />
-						{/* 耗时数字与行头时间一致用界面字体（见 TurnAuthorHeader 注释）；tabular-nums 保持跳动不抖 */}
-						<span className="text-body leading-none tabular-nums">
-							{isRunLive ? (
-								<LiveDuration startedAt={run.startedAt} isStreaming />
-							) : (
-								formatDuration(duration)
-							)}
-						</span>
-					</div>
+				{/* 纯工具/思考轮（无 mergedText）的耗时 fallback */}
+				{(!mergedText || editing) && showDuration && (
+					<span className="flex items-center gap-1 text-[11px] leading-none tabular-nums text-muted-foreground/70">
+						<Clock size={11} className="shrink-0" aria-hidden="true" />
+						{isRunLive ? (
+							<LiveDuration startedAt={run.startedAt} isStreaming />
+						) : (
+							formatDuration(duration)
+						)}
+					</span>
 				)}
 
 			</div>
