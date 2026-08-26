@@ -3,7 +3,9 @@ import { join } from "node:path";
 
 const dependencySections = ["dependencies", "devDependencies", "optionalDependencies"];
 const exactVersionPattern = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
-const ignoredDirectories = new Set([".git", "dist", "node_modules"]);
+// .pi/npm is the user's mutable extension environment, not a distributable
+// workspace. Auditing it would make repository checks depend on local plugins.
+const ignoredDirectories = new Set([".git", ".pi", "dist", "node_modules"]);
 const packageJsonFiles = [];
 
 function collectPackageJsonFiles(directory) {

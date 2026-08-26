@@ -1,5 +1,6 @@
 {
-	"name": "pi-monorepo",
+	"name": "community-hydroagent",
+	"description": "浙水智能体 hydroZagent：水利行业 Agent 核心、桌面工作台与局域网协作入口。",
 	"private": true,
 	"type": "module",
 	"workspaces": [
@@ -12,6 +13,12 @@
 		"packages/coding-agent/examples/extensions/gondolin"
 	],
 	"scripts": {
+		"desktop:dev": "node scripts/dev-desktop.mjs",
+		"desktop:prepare": "npm run build:offline",
+		"desktop:check": "npm --prefix apps/desktop run typecheck",
+		"desktop:test": "npm --prefix apps/desktop test",
+		"desktop:runtime": "npm --prefix packages/coding-agent run build:binary",
+		"desktop:dist": "npm run desktop:runtime && npm --prefix apps/desktop run dist",
 		"clean": "npm run clean --workspaces",
 		"build": "cd packages/tui && npm run build && cd ../telemetry && npm run build && cd ../ai && npm run build && cd ../agent && npm run build && cd ../session-backends/sqlite-node && npm run build && cd ../../protocol && npm run build && cd ../client && npm run build && cd ../server && npm run build && cd ../coding-agent && npm run build",
 		"build:offline": "cd packages/tui && npm run build && cd ../telemetry && npm run build && cd ../ai && npm run build:offline && cd ../agent && npm run build && cd ../session-backends/sqlite-node && npm run build && cd ../../protocol && npm run build && cd ../client && npm run build && cd ../server && npm run build && cd ../coding-agent && npm run build",

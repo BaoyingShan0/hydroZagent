@@ -42,3 +42,11 @@ plans/
 .pi/hf-sessions/
 .pi/hf-sessions-backup/
 collect.sh
+
+# Legacy PiDeck-only assets are not part of the integrated hydroZagent product.
+/apps/desktop/.github/
+/apps/desktop/assets/
+/apps/desktop/build/pets/
+/apps/desktop/docs-site/
+/apps/desktop/video-series/
+/apps/desktop/vision-test.png

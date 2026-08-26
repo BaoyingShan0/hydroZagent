@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' file: data: blob: pideck-bg: hydrozagent-bg: https://cloudcache.tencent-cloud.com https://skillhub-1388575217.cos.accelerate.myqcloud.com; font-src 'self' data:; frame-src 'self' file: blob:; connect-src 'self' ws://127.0.0.1:* ws://localhost:* http://127.0.0.1:* http://localhost:* https://api.skillhub.cn"
+    />
+    <title></title>
+    <style>
+      /* 启动画面：独立于 #root，React 挂载后淡出移除；不依赖外部字体/图片，保证首帧极快。 */
+      /* 注意：reset 必须限定在 boot-overlay 内——全局 * 规则是无层级的，
+         会压过 Tailwind @layer utilities 的所有间距工具类（#115 曾因此导致菜单/弹窗无内边距）。 */
+      #boot-overlay, #boot-overlay * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        height: 100%;
+        overflow: hidden;
+        background: #eef0f3;
+      }
+
+      #boot-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        background:
+          radial-gradient(900px 520px at 50% 20%, rgba(111, 175, 192, 0.22), transparent 64%),
+          linear-gradient(180deg, #f8faf9 0%, #f1f6f6 56%, #e7f0f2 100%);
+        transition: opacity 420ms cubic-bezier(0.22, 1, 0.36, 1), transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+        will-change: opacity, transform;
+      }
+      #boot-overlay.fade-out {
+        opacity: 0;
+        transform: scale(1.02);
+        pointer-events: none;
+      }
+
+      .boot-brand {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;
+        animation: boot-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+
+      .boot-logo {
+        position: relative;
+        width: 92px;
+        height: 92px;
+        display: grid;
+        place-items: center;
+        border-radius: 24px;
+        background: linear-gradient(145deg, #365763, #4f8290 62%, #6fafc0);
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.18) inset,
+          0 18px 38px rgba(54, 87, 99, 0.24),
+          0 2px 8px rgba(54, 87, 99, 0.08);
+      }
+      .boot-logo::after {
+        content: "";
+        position: absolute;
+        inset: -10px;
+        border-radius: 28px;
+        border: 1px solid rgba(15, 23, 42, 0.14);
+        animation: boot-ring 1.8s ease-out infinite;
+        pointer-events: none;
+      }
+      .boot-logo svg {
+        width: 48px;
+        height: 48px;
+      }
+
+      .boot-title {
+        color: #294853;
+        font-size: 34px;
+        font-weight: 650;
+        letter-spacing: 0.1em;
+        font-family: "Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei UI", system-ui, sans-serif;
+        line-height: 1.1;
+      }
+      .boot-subtitle {
+        color: #5b6a76;
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+        line-height: 1.35;
+      }
+
+      .boot-progress {
+        width: 120px;
+        height: 3px;
+        border-radius: 999px;
+        background: rgba(54, 87, 99, 0.1);
+        overflow: hidden;
+        animation: boot-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+      }
+      .boot-progress-bar {
+        width: 42%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #365763, #6fafc0, #c94f45);
+        animation: boot-progress 1.15s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      }
+
+      @keyframes boot-rise {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes boot-ring {
+        0% {
+          opacity: 0.55;
+          transform: scale(0.92);
+        }
+        70% {
+          opacity: 0;
+          transform: scale(1.08);
+        }
+        100% {
+          opacity: 0;
+          transform: scale(1.08);
+        }
+      }
+      @keyframes boot-progress {
+        0% {
+          transform: translateX(-120%);
+        }
+        100% {
+          transform: translateX(280%);
+        }
+      }
+
+      @media (prefers-color-scheme: dark) {
+        html, body {
+          background: #111315;
+        }
+        #boot-overlay {
+          background:
+            radial-gradient(1000px 520px at 50% 30%, rgba(111, 175, 192, 0.13), transparent 60%),
+            linear-gradient(180deg, #17272c 0%, #101b1f 100%);
+        }
+        .boot-title {
+          color: #e6f2f5;
+        }
+        .boot-subtitle {
+          color: #9db8c0;
+        }
+        .boot-progress {
+          background: rgba(255, 255, 255, 0.08);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .boot-brand,
+        .boot-progress,
+        .boot-logo::after,
+        .boot-progress-bar {
+          animation: none !important;
+        }
+        #boot-overlay {
+          transition-duration: 120ms;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- 启动画面覆盖层：React 挂载后通过 fade-out 动画淡出再移除 -->
+    <div id="boot-overlay">
+      <div class="boot-brand">
+        <div class="boot-logo">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <path d="M60 17c-13 18-29 34-29 54a29 29 0 0 0 58 0c0-20-16-36-29-54Z" fill="none" stroke="#f7f8f7" stroke-width="5" stroke-linejoin="round"/>
+            <path d="M40 60c9-7 18-7 27 0s18 7 27 0M36 72c10-7 20-7 30 0s20 7 30 0M41 84c8-5 16-5 24 0s16 5 24 0" fill="none" stroke="#f7f8f7" stroke-width="5" stroke-linecap="round"/>
+            <circle cx="60" cy="44" r="4" fill="#c94f45"/>
+          </svg>
+        </div>
+        <strong class="boot-title">浙水智能体</strong>
+        <span class="boot-subtitle">AI 赋能水利 · 智慧守护江河</span>
+      </div>
+      <div class="boot-progress" aria-hidden="true">
+        <div class="boot-progress-bar"></div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

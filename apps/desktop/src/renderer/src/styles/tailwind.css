@@ -1,0 +1,293 @@
+/**
+ * Tailwind v4 入口（UI 2.0 / issue #115）。
+ *
+ * pure official：shadcn new-york + zinc。
+ * - primary / ring → 跟随 foundation 的 --color-accent（data-accent 主题色）；
+ *   默认 neutral accent 就是 zinc-900 / 暗色 zinc-50，等价官方 zinc primary
+ * - accent（工具类 bg-accent）→ 悬停浅面（bg-active），与官方一致
+ */
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Streamdown 及其可选插件（code/mermaid/math）的 Tailwind v4 源码扫描：
+   不声明则其内置控件（表格复制/下载、代码块、mermaid 工具栏）的类名不生成，
+   表现为控件缺背景/边框/hover 态（样式残缺）。路径相对本文件。 */
+@source "../../../../node_modules/streamdown/dist/*.js";
+@source "../../../../node_modules/@streamdown/code/dist/*.js";
+@source "../../../../node_modules/@streamdown/mermaid/dist/*.js";
+@source "../../../../node_modules/@streamdown/math/dist/*.js";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+}
+
+/* 聊天内容宽度：变量由 AppShell 注入；实际 width 写在消息区/输入框的 inline style
+ * （chatContentWidthStyle），不在这里做 padding——单栏 SessionView 是 display:contents，
+ * 父级 padding 套不到时间线和 composer。 */
+
+@theme inline {
+  /* 应用域 token（旧 CSS 继续用） */
+  --color-bg-app: var(--color-bg-app);
+  --color-bg-panel: var(--color-bg-panel);
+  --color-bg-sidebar: var(--color-bg-sidebar);
+  --color-sidebar: var(--color-bg-sidebar);
+  --color-sidebar-foreground: var(--color-text-primary);
+  --color-bg-muted: var(--color-bg-muted);
+  --color-bg-subtle: var(--color-bg-muted);
+  --color-bg-input: var(--color-bg-input);
+  --color-bg-popover: var(--color-bg-popover);
+  --color-bg-hover: var(--color-bg-hover);
+  --color-bg-active: var(--color-bg-active);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-tertiary: var(--color-text-tertiary);
+  --color-text-inverse: var(--color-text-inverse);
+  --color-border-subtle: var(--color-border-subtle);
+  --color-border-default: var(--color-border-default);
+  --color-border-strong: var(--color-border-strong);
+  --color-danger: var(--color-danger);
+  --color-danger-soft: var(--color-danger-soft);
+  --color-success: var(--color-success);
+  --color-success-soft: var(--color-success-soft);
+  --color-success-strong: var(--color-success-strong);
+  --color-warning: var(--color-warning);
+  --color-info: var(--color-info);
+
+  /* shadcn 语义：primary 动作色跟随主题色（data-accent），不再绑正文色 */
+  --color-background: var(--color-bg-app);
+  --color-foreground: var(--color-text-primary);
+  --color-card: var(--color-bg-panel);
+  --color-card-foreground: var(--color-text-primary);
+  --color-popover: var(--color-bg-popover);
+  --color-popover-foreground: var(--color-text-primary);
+  --color-primary: var(--color-accent);
+  --color-primary-foreground: var(--color-text-inverse);
+  --color-secondary: var(--color-bg-muted);
+  --color-secondary-foreground: var(--color-text-primary);
+  --color-muted: var(--color-bg-muted);
+  --color-muted-foreground: var(--color-text-secondary);
+  --color-accent: var(--color-bg-active);
+  --color-accent-foreground: var(--color-text-primary);
+  /* 主题色淡背景：随 data-accent 切换（绿/蓝/紫…），供下拉 hover/选中高亮统一使用 */
+  --color-accent-soft: var(--color-accent-soft);
+  --color-destructive: var(--color-danger);
+  --color-destructive-foreground: #fafafa;
+  --color-border: var(--color-border-default);
+  --color-input: var(--color-border-default);
+  --color-ring: var(--color-accent-strong);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+
+  --font-sans: var(--font-family-base);
+  --font-brand: var(--font-family-brand);
+  --font-mono: var(--font-family-mono);
+
+  /* 动效 token（AGENTS.md 三档时长 + 统一缓动）：
+     duration-fast=120ms 微反馈（hover/active）、duration-base=200ms 常规（弹层/展开）、
+     duration-slow=320ms 面板级（切会话/抽屉）；ease-out-quint 进场、ease-in 离场（内置）。
+     注意：时长 token 不用 --duration-* 命名空间——Tailwind v4 的 duration utility 只接受
+     数字 bare value（duration-<n>），命名 token 不生成 utility，改用下方 @utility 显式定义；
+     ease token 为普通对象映射，@theme 正常生成。新动画一律引用这些 utility，
+     禁止散落裸时长/裸缓动；布局动画只动 transform/opacity。 */
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+
+  /* 字号 token → Tailwind text-* 工具类：默认值与旧版一致，
+     但随 data-ui-font-size / data-chat-font-size 设置缩放（全局统一字号规范） */
+  --text-micro: var(--font-size-micro);
+  --text-micro--line-height: var(--line-height-micro);
+  --text-caption: var(--font-size-caption);
+  --text-caption--line-height: var(--line-height-caption);
+  --text-control: var(--font-size-control);
+  --text-control--line-height: var(--line-height-control);
+  /* widget 弹层（todo/plan 列表）字号体系：标题/空态/chip 用 --text-widget（默认 11px，
+     比右侧徽章 caption 12px 小 1px）；条目 --text-widget-item 再小一档（默认 10px）；
+     详情 --text-widget-detail 最小（默认 9px）。均随「界面字号」设置联动，
+     窄窗口 vw 收缩兜底不无限放大 */
+  --text-widget: clamp(9px, 0.7vw, calc(var(--font-size-caption) - 1px));
+  --text-widget--line-height: var(--line-height-caption);
+  --text-widget-item: clamp(9px, 0.7vw, calc(var(--font-size-caption) - 2px));
+  --text-widget-item--line-height: var(--line-height-caption);
+  --text-widget-detail: clamp(8px, 0.6vw, calc(var(--font-size-caption) - 3px));
+  --text-widget-detail--line-height: var(--line-height-caption);
+  --text-body: var(--font-size-body);
+  --text-body--line-height: var(--line-height-body);
+  --text-chat: var(--font-size-chat);
+  --text-chat--line-height: var(--line-height-chat);
+  --text-input: var(--font-size-input);
+  --text-input--line-height: var(--line-height-input);
+  --text-title: var(--font-size-title);
+  --text-title--line-height: var(--line-height-title);
+  --text-brand: var(--font-size-brand);
+  --text-heading: var(--font-size-heading);
+}
+
+/* shadcn CSS variables 兼容层（裸变量名）：beUI/shadcn 官方组件在样式与
+   inline style 里直接 var() 引用 --muted-foreground / --foreground 这类
+   无前缀变量（不经 Tailwind class），本项目此前只有 --color-* 主题变量。
+   值映射到语义 token：亮/暗/主题色自动跟随，官方组件源码保持原样。 */
+:root {
+  --muted-foreground: var(--color-text-secondary);
+  --foreground: var(--color-text-primary);
+}
+
+/* 动效时长 utility（唯一真源，对应 AGENTS.md 三档时长）：
+   duration-fast=120ms 微反馈（hover/active）、duration-base=200ms 常规（弹层/展开）、
+   duration-slow=320ms 面板级（切会话/抽屉）。
+   不用 --duration-* 主题 token：v4 的 duration utility 只接受数字 bare value，
+   命名值不会生成类；@utility 显式注册让类名稳定且值集中一处。 */
+@utility duration-fast {
+  transition-duration: 120ms;
+}
+@utility duration-base {
+  transition-duration: 200ms;
+}
+@utility duration-slow {
+  transition-duration: 320ms;
+}
+
+/* 文件预览 Markdown 容器专属 chrome（挂 markdown-body 之上，仅作用于预览场景）：
+ * 阅读宽度居中、任务列表 checkbox、kbd/mark、表格斑马纹、图片描边、details 折叠块。
+ * 排版主体复用 timeline.css 的 .markdown-body 体系（标题/段落/列表/代码/引用/表格），
+ * 这里只补预览场景需要的增量；@utility 是 Tailwind v4 官方注册机制，
+ * 子元素选择器走 & 嵌套，随 utilities 层生效（压过 legacy 层的 .markdown-body）。 */
+@utility markdown-preview-chrome {
+  & {
+    max-width: 880px;
+    margin-inline: auto;
+  }
+  /* 任务列表（remark-gfm）：去圆点 + accent 色 checkbox */
+  & li.task-list-item {
+    list-style: none;
+  }
+  & ul:has(> li.task-list-item) {
+    padding-left: 1.4em;
+  }
+  & input[type="checkbox"] {
+    accent-color: var(--color-accent);
+    margin-right: 0.45em;
+    vertical-align: -0.1em;
+  }
+  /* 键盘键帽 / 高亮标记（raw HTML 常见元素） */
+  & kbd {
+    font-family: var(--font-family-mono);
+    font-size: 0.85em;
+    background: var(--color-bg-muted);
+    border: 1px solid var(--color-border-default);
+    border-bottom-width: 2px;
+    border-radius: var(--radius-xs);
+    padding: 0.15em 0.4em;
+  }
+  & mark {
+    background: color-mix(in srgb, var(--color-warning) 26%, transparent);
+    color: inherit;
+    border-radius: 2px;
+    padding: 0 0.15em;
+  }
+  /* 表格斑马纹：偶数行淡底（th 已有 bg-muted，用半透明避免混淆） */
+  & tbody tr:nth-child(even) {
+    background: color-mix(in srgb, var(--color-bg-muted) 55%, transparent);
+  }
+  /* 图片：细边框 + 轻阴影 */
+  & img {
+    border: 1px solid var(--color-border-subtle);
+    box-shadow: var(--shadow-sm);
+  }
+  /* details/summary 可折叠块（raw HTML） */
+  & details {
+    margin: 0.6em 0;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-muted);
+  }
+  & summary {
+    cursor: pointer;
+    padding: 8px 12px;
+    font-weight: 600;
+    user-select: none;
+  }
+  & details[open] summary {
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+  & details > :not(summary) {
+    padding: 0 12px 8px;
+  }
+}
+
+/* ── 壁纸模式右侧抽屉透明化覆盖 ──────────────────────────────
+ * 必须放 utilities 层：legacy 层（foundation.css）的 data-bg-image 规则
+ * 压不过 bg-background / bg-bg-subtle 等 utility（层序 legacy < utilities）。
+ * Git / 浏览器 / 抽屉头部叠在半透明 detail-drawer 上会形成双层白（更实），
+ * 这里统一透明、透出 detail-drawer 一层，与文件面板/聊天区同档。 */
+@layer utilities {
+  :root[data-bg-image="on"] .shell-panel-drawer .drawer-header,
+  :root[data-bg-image="on"] .shell-panel-drawer .git-panel,
+  :root[data-bg-image="on"] .shell-panel-drawer .git-panel .bg-background,
+  :root[data-bg-image="on"] .shell-panel-drawer .browser-panel,
+  :root[data-bg-image="on"] .shell-panel-drawer .browser-panel .bg-bg-subtle {
+    background: transparent;
+  }
+}
+
+/* ── 壁纸模式 chrome 小块透明化（tab 栏/标题/抽屉 tab 栏/窗口控制条）──────────
+ * 这些连续纯色小块用 bg-background（/80）或 --color-bg-panel，叠在半透明面板
+ * （chat-pane/detail-drawer 同为 panelMix 白）上形成双层半透明白（≈47-51% 白），
+ * 比主区单层（30%）实一档，观感像磨砂灰白补丁；透明后透出底层单层，与主区同档。
+ * 必须放 utilities 层：session-tabs-bar 的 bg-background/80、chat-header/drawer-
+ * activity-rail 的 bg-background 都是 utility，legacy 层规则压不过（层序）。
+ * .window-controls 的 background 原在 legacy 层（foundation.css），此处一并收口。 */
+@layer utilities {
+  :root[data-bg-image="on"] .session-tabs-bar,
+  :root[data-bg-image="on"] .chat-header,
+  :root[data-bg-image="on"] .drawer-activity-rail,
+  :root[data-bg-image="on"] .window-controls {
+    background: transparent;
+  }
+}
+
+/* ── 壁纸模式内容层磨砂块透明化（第二波：输入框/用户气泡/工具卡片）──────────
+ * composer-box 用 bg-card、user-turn-bubble 用 bg-muted/60、tool-card 用
+ * bg-bg-panel（均为 utilities 层 utility），叠在 chat-pane 半透明白上形成双层白；
+ * 透明化后靠 border + shadow 保持卡片边界。同理必须放 utilities 层才能压过。
+ * 注意：user-turn-bubble 在 timeline.css（legacy）还有一套 accent-muted 混色背景，
+ * 因 utilities > legacy 本就只生效 bg-muted/60，此处一并收口为透明。 */
+@layer utilities {
+  :root[data-bg-image="on"] .composer-box,
+  :root[data-bg-image="on"] .user-turn-bubble,
+  :root[data-bg-image="on"] .tool-card {
+    background: transparent;
+  }
+}
+
+/* ── 思考扫光动画（deepseek-harness ReasoningRow 同款）─────────────────
+ * 折叠态思考单行的「流式光带」：仅思考仍在流式（running）时存在，结束后消失，
+ * 与状态完全同步，避免旧跑马灯「思考结束还在滚」的问题。 */
+@theme {
+  --animate-thinking-sweep: thinking-sweep 2.6s ease-out infinite;
+  /* 工具卡 trigger 行运行中扫光：与 thinking-sweep 同 keyframes 同参数
+     （dsh-web 的 reasoning-row-sweep / command-row-sweep 本来就是两套同参动画），
+     语义名分离便于按组件收尾，不必重复定义 keyframes。 */
+  --animate-tool-sweep: thinking-sweep 2.6s ease-out infinite;
+
+  @keyframes thinking-sweep {
+    0% {
+      left: -300px;
+    }
+    90%,
+    100% {
+      left: 100%;
+    }
+  }
+}

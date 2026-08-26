@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="hydro-bg" x1="154" y1="102" x2="870" y2="922" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#365763"/>
+      <stop offset="0.62" stop-color="#4f8290"/>
+      <stop offset="1" stop-color="#6fafc0"/>
+    </linearGradient>
+    <linearGradient id="hydro-shine" x1="512" y1="86" x2="512" y2="580" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="mark-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="20" stdDeviation="20" flood-color="#263e47" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" rx="228" fill="url(#hydro-bg)"/>
+  <path d="M0 0h1024v430C792 524 580 454 374 294 244 193 120 151 0 168Z" fill="url(#hydro-shine)"/>
+  <g filter="url(#mark-shadow)">
+    <path d="M512 174c-111 154-247 290-247 460a247 247 0 0 0 494 0c0-170-136-306-247-460Z" fill="none" stroke="#f7f8f7" stroke-width="42" stroke-linejoin="round"/>
+    <path d="M342 540c77-60 153-60 230 0s153 60 230 0M308 642c85-60 170-60 255 0s170 60 255 0M350 744c68-43 136-43 204 0s136 43 204 0" fill="none" stroke="#f7f8f7" stroke-width="42" stroke-linecap="round"/>
+    <circle cx="512" cy="404" r="34" fill="#c94f45"/>
+  </g>
+</svg>

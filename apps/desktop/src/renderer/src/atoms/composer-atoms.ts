@@ -1,0 +1,264 @@
+import { atom } from "jotai";
+import type { ComposerAgentMode, ImageContent } from "../../../shared/types";
+import type { ModelPending } from "../utils/modelPendingDisplay";
+import type { ThinkingLevelPending } from "../utils/thinkingDisplay";
+import type { QuoteSnippet } from "../components/session/composer/quoteChip";
+import { currentSessionIdAtom } from "./session-atoms";
+
+/**
+ * 粘贴大文本 → 落盘文件 chip 的元数据（内容只在主进程受管目录，此处仅存指针）。
+ * inProject=true：发送时折叠为 @"path" 引用（pi 可展开读取）；
+ * inProject=false（匿名会话，文件在 userData）：发送时折叠为原样文本内联。
+ */
+export type PastedTextFile = {
+	id: string;
+	path: string;
+	fileName: string;
+	bytes: number;
+	inProject: boolean;
+};
+
+export type SessionComposerMode = ComposerAgentMode;
+export type { ModelPending };
+
+/** 会话内「引用追问」快照仓：id → 划选文本快照（chip 是指针，全文在这里）。 */
+export type SessionQuoteMap = Record<string, QuoteSnippet>;
+
+export type SessionSendState = {
+  status: "idle" | "activating" | "sending" | "error" | "unknown";
+  requestId?: string;
+  error?: string;
+  /** Snapshot kept visible when the transport result cannot prove delivery. */
+  unknownSnapshot?: {
+    message: string;
+    images?: ImageContent[];
+  };
+};
+
+export const sessionDraftByIdAtom = atom<Record<string, string>>({});
+export const sessionAttachmentsByIdAtom = atom<Record<string, ImageContent[]>>({});
+export const sessionPasteFilesByIdAtom = atom<Record<string, PastedTextFile[]>>({});
+export const sessionQuotesByIdAtom = atom<Record<string, SessionQuoteMap>>({});
+export const sessionComposerModeByIdAtom = atom<Record<string, SessionComposerMode>>({});
+export const sessionSendStateByIdAtom = atom<Record<string, SessionSendState>>({});
+
+/**
+ * 流式生成中切换思考强度产生的「待生效」指示（issue #146，xhigh->max）。
+ * 只在生成进行中设置；流式结束（没有进行中的生成）时由 ComposerArea 清除。
+ */
+export const thinkingLevelPendingByIdAtom = atom<
+	Record<string, ThinkingLevelPending | undefined>
+>({});
+
+/**
+ * 生成进行中切换模型：pi 不支持运行中 set_model，只写入会话记录；
+ * 本轮结束后再套到 Agent。新加、不在启动快照里的模型不走这里，走重启确认。
+ */
+export const modelPendingByIdAtom = atom<Record<string, ModelPending | undefined>>({});
+
+export const currentSessionDraftAtom = atom(
+  (get) => {
+    const sessionId = get(currentSessionIdAtom);
+    return sessionId ? (get(sessionDraftByIdAtom)[sessionId] ?? "") : "";
+  },
+  (get, set, value: string | ((current: string) => string)) => {
+    const sessionId = get(currentSessionIdAtom);
+    if (!sessionId) return;
+    set(setSessionDraftAtom, { sessionId, value });
+  },
+);
+
+export const currentSessionAttachmentsAtom = atom(
+  (get) => {
+    const sessionId = get(currentSessionIdAtom);
+    return sessionId ? (get(sessionAttachmentsByIdAtom)[sessionId] ?? []) : [];
+  },
+  (get, set, value: ImageContent[] | ((current: ImageContent[]) => ImageContent[])) => {
+    const sessionId = get(currentSessionIdAtom);
+    if (!sessionId) return;
+    set(setSessionAttachmentsAtom, { sessionId, value });
+  },
+);
+
+export const currentSessionComposerModeAtom = atom(
+  (get) => {
+    const sessionId = get(currentSessionIdAtom);
+    return sessionId
+      ? (get(sessionComposerModeByIdAtom)[sessionId] ?? "normal")
+      : "normal";
+  },
+  (get, set, mode: SessionComposerMode) => {
+    const sessionId = get(currentSessionIdAtom);
+    if (!sessionId) return;
+    set(setSessionComposerModeAtom, { sessionId, mode });
+  },
+);
+
+export const currentSessionSendStateAtom = atom((get) => {
+  const sessionId = get(currentSessionIdAtom);
+  return sessionId
+    ? (get(sessionSendStateByIdAtom)[sessionId] ?? { status: "idle" as const })
+    : { status: "idle" as const };
+});
+
+export const setSessionDraftAtom = atom(
+  null,
+  (get, set, input: {
+    sessionId: string;
+    value: string | ((current: string) => string);
+  }) => {
+    const drafts = get(sessionDraftByIdAtom);
+    const current = drafts[input.sessionId] ?? "";
+    const nextValue = typeof input.value === "function"
+      ? input.value(current)
+      : input.value;
+    const next = { ...drafts };
+    if (nextValue) next[input.sessionId] = nextValue;
+    else delete next[input.sessionId];
+    set(sessionDraftByIdAtom, next);
+  },
+);
+
+export const setSessionAttachmentsAtom = atom(
+  null,
+  (get, set, input: {
+    sessionId: string;
+    value: ImageContent[] | ((current: ImageContent[]) => ImageContent[]);
+  }) => {
+    const attachments = get(sessionAttachmentsByIdAtom);
+    const current = attachments[input.sessionId] ?? [];
+    const nextValue = typeof input.value === "function"
+      ? input.value(current)
+      : input.value;
+    const next = { ...attachments };
+    if (nextValue.length) next[input.sessionId] = nextValue;
+    else delete next[input.sessionId];
+    set(sessionAttachmentsByIdAtom, next);
+  },
+);
+
+/** 会话内粘贴文件 chip 的写入/清理（与附件同生命周期：运行时态，不落盘）。 */
+export const setSessionPasteFilesAtom = atom(
+  null,
+  (get, set, input: {
+    sessionId: string;
+    value: PastedTextFile[] | ((current: PastedTextFile[]) => PastedTextFile[]);
+  }) => {
+    const files = get(sessionPasteFilesByIdAtom);
+    const current = files[input.sessionId] ?? [];
+    const nextValue = typeof input.value === "function"
+      ? input.value(current)
+      : input.value;
+    const next = { ...files };
+    if (nextValue.length) next[input.sessionId] = nextValue;
+    else delete next[input.sessionId];
+    set(sessionPasteFilesByIdAtom, next);
+  },
+);
+
+/** 写入/清理会话引用快照仓；与草稿同生命周期（运行时态，不落盘）。 */
+export const setSessionQuotesAtom = atom(
+  null,
+  (get, set, input: {
+    sessionId: string;
+    value: SessionQuoteMap | ((current: SessionQuoteMap) => SessionQuoteMap);
+  }) => {
+    const quotes = get(sessionQuotesByIdAtom);
+    const current = quotes[input.sessionId] ?? {};
+    const nextValue = typeof input.value === "function"
+      ? input.value(current)
+      : input.value;
+    const next = { ...quotes };
+    if (Object.keys(nextValue).length > 0) next[input.sessionId] = nextValue;
+    else delete next[input.sessionId];
+    set(sessionQuotesByIdAtom, next);
+  },
+);
+
+export const setSessionComposerModeAtom = atom(
+  null,
+  (get, set, input: { sessionId: string; mode: SessionComposerMode }) => {
+    const modes = { ...get(sessionComposerModeByIdAtom) };
+    // 显式记下 normal：DSH 进行中的 goal 不能把「用户刚切回普通」再推导回目标模式。
+    modes[input.sessionId] = input.mode;
+    set(sessionComposerModeByIdAtom, modes);
+  },
+);
+
+export const setSessionSendStateAtom = atom(
+  null,
+  (get, set, input: { sessionId: string; state: SessionSendState }) => {
+    const states = { ...get(sessionSendStateByIdAtom) };
+    if (input.state.status === "idle") delete states[input.sessionId];
+    else states[input.sessionId] = input.state;
+    set(sessionSendStateByIdAtom, states);
+  },
+);
+
+export const clearSessionComposerSnapshotAtom = atom(
+  null,
+  (get, set, input: {
+    sessionId: string;
+    draft: string;
+    attachments: ImageContent[];
+  }) => {
+    const currentDraft = get(sessionDraftByIdAtom)[input.sessionId] ?? "";
+    if (currentDraft === input.draft) {
+      set(setSessionDraftAtom, { sessionId: input.sessionId, value: "" });
+    }
+    const currentAttachments = get(sessionAttachmentsByIdAtom)[input.sessionId] ?? [];
+    if (
+      currentAttachments.length === input.attachments.length &&
+      currentAttachments.every((attachment, index) => attachment === input.attachments[index])
+    ) {
+      set(setSessionAttachmentsAtom, { sessionId: input.sessionId, value: [] });
+    }
+  },
+);
+
+/**
+ * 把 renderer-only 虚拟会话（引导页空白输入框）的 composer 状态整体搬到真实
+ * 会话：首次发送时才创建 Catalog 会话，发送后需在同一输入框继续——把草稿/附件/
+ * 模式/发送态一起移动可避免切换 sessionId 导致重挂载丢内容。
+ */
+export const promoteSessionComposerStateAtom = atom(
+  null,
+  (get, set, input: { fromSessionId: string; toSessionId: string }) => {
+    if (input.fromSessionId === input.toSessionId) return;
+    const move = <T>(source: Record<string, T>) => {
+      if (!(input.fromSessionId in source)) return source;
+      const next = { ...source, [input.toSessionId]: source[input.fromSessionId] };
+      delete next[input.fromSessionId];
+      return next;
+    };
+    set(sessionDraftByIdAtom, move(get(sessionDraftByIdAtom)));
+    set(sessionAttachmentsByIdAtom, move(get(sessionAttachmentsByIdAtom)));
+    set(sessionPasteFilesByIdAtom, move(get(sessionPasteFilesByIdAtom)));
+    set(sessionComposerModeByIdAtom, move(get(sessionComposerModeByIdAtom)));
+    set(sessionSendStateByIdAtom, move(get(sessionSendStateByIdAtom)));
+  },
+);
+
+export const removeSessionComposerStateAtom = atom(null, (get, set, sessionId: string) => {
+  const drafts = { ...get(sessionDraftByIdAtom) };
+  delete drafts[sessionId];
+  set(sessionDraftByIdAtom, drafts);
+  const attachments = { ...get(sessionAttachmentsByIdAtom) };
+  delete attachments[sessionId];
+  set(sessionAttachmentsByIdAtom, attachments);
+  const pasteFiles = { ...get(sessionPasteFilesByIdAtom) };
+  delete pasteFiles[sessionId];
+  set(sessionPasteFilesByIdAtom, pasteFiles);
+  const modes = { ...get(sessionComposerModeByIdAtom) };
+  delete modes[sessionId];
+  set(sessionComposerModeByIdAtom, modes);
+  const sendStates = { ...get(sessionSendStateByIdAtom) };
+  delete sendStates[sessionId];
+  set(sessionSendStateByIdAtom, sendStates);
+  const thinkingPending = { ...get(thinkingLevelPendingByIdAtom) };
+  delete thinkingPending[sessionId];
+  set(thinkingLevelPendingByIdAtom, thinkingPending);
+  const modelPending = { ...get(modelPendingByIdAtom) };
+  delete modelPending[sessionId];
+  set(modelPendingByIdAtom, modelPending);
+});

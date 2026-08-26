@@ -1,0 +1,59 @@
+/**
+ * Web 端（A2 React）状态类型。
+ *
+ * 与后端 /api/state 返回结构对齐（WebServiceManager.getState），
+ * 由 webApi.ts 轮询填充。会话/运行态只读展示用，不持有桌面端 atoms。
+ */
+
+export type WebProject = {
+	id: string;
+	name: string;
+	path: string;
+	kind?: "chat";
+	/** 最近打开时间（毫秒时间戳），Web 端项目列表按此降序展示 */
+	lastOpenedAt?: number;
+	pinned?: boolean;
+	sortOrder?: number;
+};
+
+export type WebSession = {
+	id: string;
+	projectId: string;
+	title: string;
+	status: string;
+	projectPath?: string;
+	model?: { provider: string; modelId: string };
+	thinkingLevel?: string;
+	/** 运行时后端（pi/dsh；缺省 pi），侧栏/头部徽标展示用 */
+	backend?: import("../../../shared/types").AgentBackend;
+	/** 最近活动时间（毫秒时间戳），Web 端会话列表按此降序展示（最新在上） */
+	updatedAt?: number;
+};
+
+export type WebRuntime = {
+	sessionId: string;
+	agentId: string;
+	status: string;
+	cwd?: string;
+	runtimeGeneration?: number;
+};
+
+export type WebPendingUiRequest = {
+	sessionId: string;
+	agentId: string;
+	runtimeGeneration: number;
+	requestId: string;
+	method: string;
+	title: string;
+	options?: string[];
+	placeholder?: string;
+	prefill?: string;
+	allowOther?: boolean;
+};
+
+export type WebState = {
+	projects: WebProject[];
+	sessions: WebSession[];
+	runtimes: WebRuntime[];
+	pendingUiRequests?: WebPendingUiRequest[];
+};

@@ -1,0 +1,66 @@
+/**
+ * Web 端数据转换单测：chatMessagesToUiMessages（历史 ChatMessage → useChat UIMessage）。
+ * 验证：角色映射（user/assistant，其它角色兜底 assistant）、thinking 注入
+ * reasoning part、正文注入 text part、空消息/无 thinking 的边界。
+ */
+import assert from "node:assert/strict";
+import test from "node:test";
+import { loadTsCommonJs } from "./helpers/loadTsCommonJs.mjs";
+
+const { chatMessagesToUiMessages } = loadTsCommonJs(
+	"src/renderer/src/web/webApi.ts",
+);
+
+function message(overrides = {}) {
+	return {
+		id: "m1",
+		agentId: "a1",
+		role: "assistant",
+		text: "hello",
+		timestamp: 1,
+		...overrides,
+	};
+}
+
+test("maps user role to user and text part", () => {
+	const result = chatMessagesToUiMessages([message({ role: "user", text: "hi" })]);
+	assert.equal(result.length, 1);
+	assert.equal(result[0].role, "user");
+	assert.equal(result[0].parts.length, 1);
+	assert.equal(result[0].parts[0].type, "text");
+	assert.equal(result[0].parts[0].text, "hi");
+});
+
+test("maps assistant role to assistant and text part", () => {
+	const result = chatMessagesToUiMessages([message({ role: "assistant", text: "hi" })]);
+	assert.equal(result[0].role, "assistant");
+	assert.equal(result[0].parts[0].type, "text");
+});
+
+test("falls back non-user roles to assistant", () => {
+	for (const role of ["system", "tool", "error"]) {
+		const result = chatMessagesToUiMessages([message({ role })]);
+		assert.equal(result[0].role, "assistant", `role ${role} should map to assistant`);
+	}
+});
+
+test("injects reasoning part before text when thinking present", () => {
+	const result = chatMessagesToUiMessages([
+		message({ thinking: "推理内容", text: "正文" }),
+	]);
+	assert.equal(result[0].parts.length, 2);
+	assert.equal(result[0].parts[0].type, "reasoning");
+	assert.equal(result[0].parts[0].text, "推理内容");
+	assert.equal(result[0].parts[1].type, "text");
+	assert.equal(result[0].parts[1].text, "正文");
+});
+
+test("omits text part when text empty", () => {
+	const result = chatMessagesToUiMessages([message({ text: "" })]);
+	assert.equal(result[0].parts.length, 0);
+});
+
+test("keeps stable ids from message", () => {
+	const result = chatMessagesToUiMessages([message({ id: "stable-id" })]);
+	assert.equal(result[0].id, "stable-id");
+});

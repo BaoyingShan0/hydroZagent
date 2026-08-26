@@ -2,7 +2,9 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
 
-const ignoredDirectories = new Set([".git", "coverage", "dist", "node_modules"]);
+// apps/desktop and .pi use their own TypeScript/runtime conventions. This
+// repository-level rule applies only to the Agent workspace sources.
+const ignoredDirectories = new Set([".git", ".pi", "apps", "coverage", "dist", "node_modules"]);
 const files = [];
 
 function collectTypescriptFiles(directory) {

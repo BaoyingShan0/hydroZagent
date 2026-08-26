@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>方案二 · 青碧朱砂配色 · 浙江水利智能体</title>
+<style>
+:root{
+  --qing:#5B6A76;        /* 青碧 · 主色 */
+  --qing-deep:#46545F;
+  --qing-mist:#E8EDEF;   /* 青碧极浅 */
+  --hu:#6FAFC0;          /* 湖蓝 · 智能感 */
+  --hu-pale:#EAF3F5;
+  --zhu:#C94F45;         /* 朱砂 · 点睛 */
+  --paper:#FAFBFC;       /* 宣纸底 */
+  --ink:#2B333A;
+  --ink-60:rgba(43,51,58,.62);
+  --ink-35:rgba(43,51,58,.35);
+  --white:#FFFFFF;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei",sans-serif;
+  background:var(--paper);
+  color:var(--ink);
+  min-height:100vh;
+}
+.scheme-tag{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:var(--qing-deep);color:#DDE6EA;
+  font-size:12px;letter-spacing:.2em;text-align:center;padding:6px;
+}
+header{
+  margin-top:28px;
+  background:var(--white);
+  border-bottom:1px solid var(--qing-mist);
+  padding:0 32px;
+  display:flex;align-items:center;justify-content:space-between;
+  height:60px;
+}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-mark{
+  width:34px;height:34px;background:var(--qing);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+}
+.logo-mark svg{width:20px;height:20px;}
+.logo-text{font-size:17px;font-weight:600;letter-spacing:.06em;color:var(--qing-deep);}
+.logo-sub{font-size:10px;color:var(--ink-60);letter-spacing:.3em;margin-top:2px;}
+nav{display:flex;gap:28px;font-size:14px;}
+nav a{color:var(--ink-60);text-decoration:none;padding:19px 0;border-bottom:2px solid transparent;}
+nav a.active{color:var(--qing-deep);border-bottom-color:var(--zhu);font-weight:600;}
+.badge{
+  border:1px solid var(--hu);color:var(--qing-deep);font-size:12px;
+  padding:5px 14px;border-radius:999px;font-weight:500;
+  display:flex;align-items:center;gap:6px;
+}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--hu);}
+.wrap{max-width:1200px;margin:0 auto;padding:34px 32px 60px;}
+.hero{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  margin-bottom:28px;flex-wrap:wrap;gap:12px;
+}
+.hero h1{
+  font-size:32px;font-weight:600;letter-spacing:.03em;line-height:1.3;color:var(--qing-deep);
+}
+.hero h1 .seal{
+  display:inline-block;font-style:normal;color:#fff;background:var(--zhu);
+  font-size:20px;padding:2px 8px;border-radius:4px;vertical-align:4px;margin-left:10px;
+  letter-spacing:.1em;
+}
+.hero p{color:var(--ink-60);font-size:14px;margin-top:10px;letter-spacing:.02em;}
+.date{font-size:13px;color:var(--ink-60);}
+.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:20px;}
+@media(max-width:900px){.grid{grid-template-columns:1fr;}}
+.panel{
+  background:var(--white);border-radius:12px;padding:22px;
+  border:1px solid var(--qing-mist);
+}
+.chat{display:flex;flex-direction:column;gap:16px;min-height:480px;}
+.chat-head{display:flex;align-items:center;gap:10px;padding-bottom:14px;border-bottom:1px solid var(--qing-mist);}
+.ai-dot{
+  width:38px;height:38px;border-radius:10px;
+  background:linear-gradient(150deg,var(--qing) 55%,var(--hu));
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:15px;
+}
+.chat-head b{font-size:15px;color:var(--qing-deep);}
+.chat-head span{font-size:12px;color:var(--ink-60);display:block;}
+.online{width:8px;height:8px;border-radius:50%;background:var(--hu);margin-left:auto;box-shadow:0 0 0 4px rgba(111,175,192,.18);}
+.msgs{display:flex;flex-direction:column;gap:14px;flex:1;}
+.msg{max-width:82%;padding:12px 16px;border-radius:12px;font-size:14px;line-height:1.75;}
+.msg.user{align-self:flex-end;background:var(--qing);color:#fff;border-bottom-right-radius:3px;}
+.msg.ai{align-self:flex-start;background:var(--hu-pale);border-bottom-left-radius:3px;}
+.msg.ai b{color:var(--zhu);font-weight:600;}
+.chips{display:flex;gap:8px;flex-wrap:wrap;}
+.chip{
+  font-size:12px;padding:7px 14px;border-radius:999px;
+  border:1px solid #C7D4D9;color:var(--qing-deep);cursor:pointer;background:var(--white);
+  transition:.2s;
+}
+.chip:hover{border-color:var(--hu);background:var(--hu-pale);}
+.input{
+  display:flex;gap:10px;border:1px solid #C7D4D9;border-radius:10px;padding:6px 6px 6px 16px;align-items:center;
+  transition:.2s;
+}
+.input:hover{border-color:var(--hu);}
+.input span{color:var(--ink-35);font-size:14px;flex:1;}
+.send{
+  background:var(--qing);color:#fff;border:none;border-radius:8px;
+  padding:10px 22px;font-size:14px;font-weight:500;cursor:pointer;letter-spacing:.1em;
+}
+.send:hover{background:var(--qing-deep);}
+.side{display:flex;flex-direction:column;gap:20px;}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.card{
+  background:var(--white);border-radius:12px;padding:18px;
+  border:1px solid var(--qing-mist);
+}
+.card .k{font-size:12px;color:var(--ink-60);letter-spacing:.08em;}
+.card .v{font-size:26px;font-weight:600;margin-top:6px;font-variant-numeric:tabular-nums;color:var(--qing-deep);}
+.card .v small{font-size:12px;font-weight:400;color:var(--ink-60);margin-left:3px;}
+.card .t{font-size:12px;margin-top:6px;}
+.up{color:var(--zhu);}
+.ok{color:var(--hu);}
+.card.alert{border-left:3px solid var(--zhu);}
+.card.alert .v{color:var(--zhu);}
+.chart-title{font-size:14px;font-weight:600;margin-bottom:4px;color:var(--qing-deep);}
+.chart-sub{font-size:12px;color:var(--ink-60);margin-bottom:14px;}
+.legend{display:flex;gap:16px;font-size:11px;color:var(--ink-60);margin-top:10px;}
+.legend i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle;}
+footer{
+  text-align:center;font-size:12px;color:var(--ink-35);padding:30px 0 10px;letter-spacing:.15em;
+}
+.mist{
+  height:110px;margin-top:-1px;position:relative;overflow:hidden;
+  background:linear-gradient(var(--white), var(--paper));
+}
+.mist svg{position:absolute;bottom:0;width:100%;}
+</style>
+</head>
+<body>
+<div class="scheme-tag">方案二 · 青碧为骨 湖蓝为韵 朱砂为睛 留白为境 — #5B6A76 · #6FAFC0 · #C94F45 · #FAFBFC</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 14c2.5-2 5.5-2 8 0s5.5 2 8 0" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".95"/><path d="M4 9c2.5-2 5.5-2 8 0s5.5 2 8 0" stroke="#6FAFC0" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+    <div>
+      <div class="logo-text">浙江水利智能体</div>
+      <div class="logo-sub">ZHEJIANG WATER AI</div>
+    </div>
+  </div>
+  <nav>
+    <a class="active" href="#">智能问答</a>
+    <a href="#">水情监测</a>
+    <a href="#">防汛调度</a>
+    <a href="#">知识库</a>
+  </nav>
+  <div class="badge">AI 在线</div>
+</header>
+<div class="mist">
+  <svg viewBox="0 0 1440 110" preserveAspectRatio="none" height="110">
+    <path d="M0,78 C240,60 420,92 720,74 C1020,56 1200,88 1440,70 L1440,110 L0,110 Z" fill="#E8EDEF" opacity=".7"/>
+    <path d="M0,92 C280,78 520,102 780,88 C1080,72 1260,98 1440,86 L1440,110 L0,110 Z" fill="#DCE4E7" opacity=".55"/>
+    <path d="M180,60 C230,44 320,44 370,58" stroke="#B9C6CC" stroke-width="1.5" fill="none" opacity=".6"/>
+    <path d="M1020,52 C1080,34 1190,34 1250,50" stroke="#B9C6CC" stroke-width="1.5" fill="none" opacity=".5"/>
+  </svg>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <h1>你好，我是浙水智答<span class="seal">智</span></h1>
+      <p>覆盖全省 1.2 万个监测站点 · 实时水情 · 防汛决策支持</p>
+    </div>
+    <div class="date">2026年8月3日 星期一 · 杭州 中雨 26°C</div>
+  </div>
+
+  <div class="grid">
+    <div class="panel chat">
+      <div class="chat-head">
+        <div class="ai-dot">智</div>
+        <div><b>浙水智答</b><span>基于全省水利数据实时回答</span></div>
+        <div class="online"></div>
+      </div>
+      <div class="msgs">
+        <div class="msg user">钱塘江流域今天的水位情况怎么样？有没有超警戒的站点？</div>
+        <div class="msg ai">
+          截至 14:00，钱塘江流域 <b>整体水位平稳</b>。全流域 86 个监测站中，84 个处于正常区间。<br><br>
+          需要关注的是：<b>富春江水库坝上站</b> 水位 23.46m，距警戒水位还有 0.8m，受上游持续降雨影响，预计今夜起涨。建议关注 20:00 发布的洪水预报。
+        </div>
+        <div class="msg user">帮我生成一份今日流域水情简报</div>
+        <div class="msg ai">好的，正在汇总 86 个站点数据与气象预报，简报将包含水位、雨情、工程运行三部分 ——</div>
+      </div>
+      <div class="chips">
+        <div class="chip">近24小时雨量分布</div>
+        <div class="chip">水库蓄水情况</div>
+        <div class="chip">台风路径影响分析</div>
+      </div>
+      <div class="input">
+        <span>询问水情、雨情、工情或防汛政策…</span>
+        <button class="send">发送</button>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="cards">
+        <div class="card">
+          <div class="k">钱塘江·闸口站水位</div>
+          <div class="v">4.12<small>m</small></div>
+          <div class="t ok">● 正常 · 距警戒 2.38m</div>
+        </div>
+        <div class="card">
+          <div class="k">全省面雨量 (24h)</div>
+          <div class="v">38.6<small>mm</small></div>
+          <div class="t up">▲ 较昨日 +12.4mm</div>
+        </div>
+        <div class="card">
+          <div class="k">大中型水库蓄水率</div>
+          <div class="v">76.3<small>%</small></div>
+          <div class="t ok">● 处于合理区间</div>
+        </div>
+        <div class="card alert">
+          <div class="k">防汛响应</div>
+          <div class="v">Ⅳ 级</div>
+          <div class="t up">丽水·温州 山洪预警中</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="chart-title">富春江水库 · 未来48小时水位预报</div>
+        <div class="chart-sub">AI 洪水演进模型 · 更新于 14:00</div>
+        <svg viewBox="0 0 320 130" style="width:100%;">
+          <line x1="0" y1="30" x2="320" y2="30" stroke="#C94F45" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <text x="4" y="24" font-size="9" fill="#C94F45">警戒水位 24.26m</text>
+          <path d="M0,95 C40,92 70,88 100,80 C140,70 180,52 230,44 C270,38 300,40 320,42" fill="none" stroke="#5B6A76" stroke-width="2.5"/>
+          <path d="M230,44 C270,38 300,40 320,42" fill="none" stroke="#6FAFC0" stroke-width="2.5" stroke-dasharray="6 5"/>
+          <path d="M0,95 C40,92 70,88 100,80 C140,70 180,52 230,44 C270,38 300,40 320,42 L320,130 L0,130 Z" fill="#6FAFC0" opacity=".16"/>
+          <circle cx="230" cy="44" r="4" fill="#C94F45"/>
+        </svg>
+        <div class="legend">
+          <span><i style="background:#5B6A76"></i>实测水位</span>
+          <span><i style="background:#6FAFC0"></i>AI 预报</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>浙江省水利厅 · 浙水智答 V2.0 · 数据实时接入省水文管理中心</footer>
+</div>
+</body>
+</html>
