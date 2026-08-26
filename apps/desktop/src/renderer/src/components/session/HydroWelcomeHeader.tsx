@@ -52,7 +52,7 @@ export function HydroWelcomeHeader() {
  */
 export function HydroWelcomeBackdrop() {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+    <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
       <img
         src={welcomeBackdrop}
         alt=""

@@ -33,7 +33,7 @@
   --font-size-caption: 12px;
   --font-size-control: 14px;
   --font-size-body: 14px;
-  --font-size-chat: 14px;
+  --font-size-chat: 13.5px;
   --font-size-input: 14px;
   --font-size-title: 20px;
   --font-size-brand: 20px;
@@ -43,7 +43,7 @@
   --line-height-caption: 18px;
   --line-height-control: 22px;
   --line-height-body: 22px;
-  --line-height-chat: 1.57;
+  --line-height-chat: 1.72;
   --line-height-input: 22px;
   --line-height-title: 28px;
   --line-height-heading: 28px;
@@ -131,4 +131,10 @@
   --color-accent-strong: #fff;
   --color-accent-soft: color-mix(in srgb, #fff 14%, var(--hydro-qing));
   --color-danger-soft: color-mix(in srgb, var(--hydro-vermilion) 18%, var(--hydro-qing));
+}
+
+/* 欢迎页 / 新建聊天页：输入框去掉浮起阴影，与水波纹背景融为一体 */
+.session-start-surface .composer-box,
+.empty-state .composer-box {
+  box-shadow: none !important;
 }

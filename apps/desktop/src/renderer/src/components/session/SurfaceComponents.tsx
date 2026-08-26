@@ -674,7 +674,7 @@ export const AssistantText = memo(
 		// 半截 markdown 由 remend 容错补全，不再需要旧管线的流式/静态双路径切换。
 		return (
 			<div
-				className="assistant-text markdown-body rounded-lg border border-border-subtle bg-[color:color-mix(in_srgb,var(--color-info)_8%,var(--color-bg-panel))] px-3 py-2"
+				className="assistant-text markdown-body rounded-lg bg-[color:color-mix(in_srgb,var(--color-info)_8%,var(--color-bg-panel))] px-3 py-2"
 				data-settle={props.settle ? "1" : undefined}
 			>
 				{props.images && props.images.length > 0 && (

@@ -19,7 +19,7 @@
    选择器必须比 .space-y-4 > :not(:last-child) 更具体，否则标题上边距会被冲成 0。 */
 .markdown-body :is(.space-y-4) > :not(:last-child):not([data-streamdown^="heading-"]):not([data-streamdown$="-list"]):not([data-streamdown="horizontal-rule"]):not([data-streamdown="blockquote"]):not([data-streamdown="code-block"]):not([data-streamdown="table-wrapper"]) {
   margin-block-start: 0;
-  margin-block-end: 0.55em;
+  margin-block-end: 0.7em;
 }
 .markdown-body :is(.space-y-4) > [data-streamdown^="heading-"] {
   margin-top: 1.1em;

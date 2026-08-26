@@ -449,7 +449,7 @@
 .tool-card {
   width: 100%;
   min-width: 0;
-  border: 1px solid var(--color-border-subtle);
+  border: none;
   border-radius: var(--radius-md);
   background: var(--color-bg-panel);
   /* 内容型 Ask 工具卡不能裁掉长问题/答案；展开内容由时间线滚动容器承载。 */

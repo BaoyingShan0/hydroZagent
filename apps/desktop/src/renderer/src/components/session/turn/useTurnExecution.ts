@@ -38,12 +38,8 @@ export function useTurnExecution(opts: {
 	/** 自动收起真正发生后回调（timeline 据此做「拉到中上方」定位）。 */
 	onAutoCollapsed?: () => void;
 }): TurnExecutionState {
-	const [stepsVisible, setStepsVisible] = useState(() => {
-		// 历史已完成且有最终回答的轮：始终折叠（时间线只留最终回答）。
-		if (opts.isComplete && !opts.agentRunning && opts.hasFinalAnswer) return false;
-		// 进行中/无最终回答（中断）的轮：默认折叠；设置①开启时才默认展开。
-		return Boolean(opts.expandInterimDuringStream);
-	});
+	// 默认始终收起：用户需要时手动展开，避免占据视口空间。
+	const [stepsVisible, setStepsVisible] = useState(false);
 	const userOverrideRef = useRef(false);
 	const wasRunningRef = useRef(Boolean(opts.agentRunning));
 	const stepsVisibleRef = useRef(stepsVisible);
