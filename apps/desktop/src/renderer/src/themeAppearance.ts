@@ -29,11 +29,15 @@ export function applyAppearanceAttributes(
 		themeScheduleDarkStart: settings.themeScheduleDarkStart,
 		systemPrefersDark,
 	});
+	// 兜底到浙水品牌基线：真实设置从主进程回填时 themeSkin 可能缺省（旧配置文件无此字段），
+	// 若直接写入 undefined，data-appearance 会失配所有 [data-appearance] 块、整套品牌 token
+	// 退回 foundation :root 默认（浅侧栏等），品牌视觉全失效。缺省一律按 classic-green 渲染。
+	const skin = settings.themeSkin || "classic-green";
 	// 品牌视觉规范只提供浅色方案；保留用户原主题偏好，但 classic-green 渲染固定为浅色。
-	root.dataset.theme = settings.themeSkin === "classic-green" ? "light" : resolvedTheme;
-	root.dataset.appearance = settings.themeSkin;
-	const skinPreset = SKIN_PRESETS.find((p) => p.id === settings.themeSkin);
+	root.dataset.theme = skin === "classic-green" ? "light" : resolvedTheme;
+	root.dataset.appearance = skin;
+	const skinPreset = SKIN_PRESETS.find((p) => p.id === skin);
 	const effectiveAccent =
-		settings.themeSkin === "custom" || !skinPreset ? settings.accent : skinPreset.accent;
+		skin === "custom" || !skinPreset ? settings.accent : skinPreset.accent;
 	root.dataset.accent = effectiveAccent;
 }

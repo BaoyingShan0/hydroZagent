@@ -1,5 +1,7 @@
 <!doctype html>
-<html lang="zh-CN">
+<!-- 品牌基线：首帧即挂 classic-green 外观，避免 React/设置回填前退回 foundation 浅色默认
+     （深青侧栏、品牌文本墨色等全失效）。App 挂载后 applyAppearanceAttributes 会按用户设置覆盖。 -->
+<html lang="zh-CN" data-appearance="classic-green" data-theme="light" data-accent="default">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

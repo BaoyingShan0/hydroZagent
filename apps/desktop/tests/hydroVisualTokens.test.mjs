@@ -69,10 +69,17 @@ test("Source Han Sans variable font and OFL license ship with the renderer", () 
 });
 
 test("Hydro brand stays light while preserving stored theme preferences", () => {
-  assert.match(appearance, /settings\.themeSkin === "classic-green" \? "light" : resolvedTheme/);
+  // 缺省 themeSkin 一律兜底 classic-green，避免 data-appearance 失配退回 foundation 浅色默认。
+  assert.match(appearance, /settings\.themeSkin \|\| "classic-green"/);
+  assert.match(appearance, /skin === "classic-green" \? "light" : resolvedTheme/);
   assert.match(webMain, /dataset\.appearance = "classic-green"/);
   assert.match(webMain, /dataset\.theme = "light"/);
   assert.doesNotMatch(webMain, /prefers-color-scheme/);
+});
+
+test("desktop index.html boots on the classic-green brand baseline", () => {
+  assert.match(bootHtml, /<html[^>]*data-appearance="classic-green"/);
+  assert.match(bootHtml, /<html[^>]*data-theme="light"/);
 });
 
 test("boot and theme preview reuse the same four brand colors", () => {
