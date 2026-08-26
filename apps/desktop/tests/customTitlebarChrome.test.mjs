@@ -34,7 +34,7 @@ test("custom titlebar content is flush to window top (no shell padding strip)", 
 });
 
 test("window controls are compact and match drag-layer inset", () => {
-  assert.match(foundation, /--window-drag-height:\s*40px/);
+  assert.match(foundation, /--window-drag-height:\s*48px/);
   assert.match(foundation, /--window-controls-width:\s*144px/);
   assert.match(foundation, /grid-template-columns:\s*repeat\(4,\s*36px\)/);
   assert.match(

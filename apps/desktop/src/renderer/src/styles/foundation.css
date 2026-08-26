@@ -1368,12 +1368,12 @@ select:focus-visible {
   --window-drag-height: 0px;
 }
 :root:has(.wechat-shell.custom-titlebar-enabled) {
-  --window-drag-height: 40px;
+  --window-drag-height: 48px;
   /* 4 × 36px；拖拽层 / Tab 栏让位 / 控件条共用，避免各写 144 漂移 */
   --window-controls-width: 144px;
 }
 .wechat-shell.custom-titlebar-enabled {
-  --window-drag-height: 40px;
+  --window-drag-height: 48px;
   --window-controls-width: 144px;
   /* 内容顶到窗口上沿：不再留空白标题条。拖拽/窗口按钮用 fixed 叠层。 */
   padding-top: 0;

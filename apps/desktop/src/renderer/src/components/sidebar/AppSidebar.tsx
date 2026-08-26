@@ -60,7 +60,7 @@ export function AppSidebar(props: AppSidebarProps) {
       creatingWorktree={props.creatingWorktree}
       isLanWeb={props.isLanWeb}
       chrome={<>
-        <div className="list-toolbar flex h-12 shrink-0 items-center gap-1 pt-1.5 pr-2.5 pl-[max(0.625rem,var(--traffic-lights-width,0px))]">
+        <div className="list-toolbar flex h-12 shrink-0 items-center gap-1 pr-2.5 pl-[max(0.625rem,var(--traffic-lights-width,0px))]">
           <div className="app-badge flex min-w-0 flex-1 items-center">
             <BrandLockup />
           </div>
