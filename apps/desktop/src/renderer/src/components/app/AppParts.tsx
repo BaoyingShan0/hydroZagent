@@ -487,7 +487,7 @@ export function BrandLockup(_props: { replayToken?: number } = {}) {
 	const brandTitle = branch ? `${t("app.brandName")} · ${branch}` : t("app.brandName");
 	return (
 		<div className="brand-lockup flex h-full min-w-0 items-center gap-2.5" aria-label={brandTitle} title={branch ? brandTitle : undefined}>
-			<HydroBrandMark size={30} className="rounded-lg shadow-sm" />
+			<HydroBrandMark size={34} className="rounded-lg shadow-sm" />
 			<div className="flex min-w-0 flex-col justify-center leading-none" aria-hidden="true">
 				<span className="brand-wordmark truncate font-brand text-[16px] font-semibold tracking-[0.06em] text-foreground">浙水智能体</span>
 				<span className="mt-1 truncate font-brand text-[10px] font-normal tracking-[0.18em] text-muted-foreground uppercase">hydroZagent</span>

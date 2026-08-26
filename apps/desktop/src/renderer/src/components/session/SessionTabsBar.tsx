@@ -561,11 +561,11 @@ function EditorWorkbenchTab(props: {
       aria-selected={Boolean(tab.active)}
       title={tab.title ?? tab.label}
       className={cn(
-        "session-tab group relative flex h-7 shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md border px-2 text-caption transition-colors",
+        "session-tab group relative flex h-7 shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md border px-2 text-[11px] transition-colors",
         "w-fit max-w-40",
         // 选中态与侧栏 SessionTree 一致：背景浮起 + 强边框 + 轻阴影（浏览器 Tab 惯例）
         tab.active
-          ? "border-border-strong bg-accent/15 font-normal text-foreground"
+          ? "border-border-strong font-normal text-foreground"
           : "border-transparent text-muted-foreground hover:bg-accent/50 hover:text-foreground",
         tab.preview && "italic font-normal text-muted-foreground",
       )}
@@ -678,14 +678,14 @@ function SessionTab(props: {
           setMenuOpen(true);
         }}
         className={cn(
-          "session-tab group relative flex h-7 shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md border px-2 text-caption transition-colors",
+          "session-tab group relative flex h-7 shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md border px-2 text-[11px] transition-colors",
           // 固定 Tab 与普通 Tab 同宽策略（按内容收缩，上限 128px）：固定 Tab 无关闭按钮，
           // hover 不会因按钮出现而跳动，无需 w-20 占位；固定宽度反而让 Pin 图标挤占标题空间
           "w-fit max-w-32",
           dragging && "opacity-50",
           // 选中态与侧栏 SessionTree 一致：背景浮起 + 强边框 + 轻阴影
           active
-            ? "border-border-strong bg-accent/15 font-normal text-foreground"
+            ? "border-border-strong font-normal text-foreground"
             : "border-transparent text-muted-foreground hover:bg-accent/50 hover:text-foreground",
           preview && "italic font-normal text-muted-foreground",
         )}

@@ -54,7 +54,7 @@ export function HydroWelcomeBackdrop() {
         src={welcomeBackdrop}
         alt=""
         aria-hidden="true"
-        className="absolute inset-x-0 bottom-0 w-full select-none opacity-70"
+        className="absolute inset-x-0 bottom-0 w-full select-none opacity-40"
       />
     </div>
   );
