@@ -37,9 +37,11 @@ import {
 import { resolvePackagedUserDataDir } from "./portableUserData";
 import { extractFocusTargetFromArgv } from "./utils/focusTarget";
 import type { Project, StartupWindowMode } from "../shared/types";
-// 使用 ?asset 后缀导入图标，electron-vite 会在构建时将其复制到输出目录并提供正确的运行时路径
-// 这解决了打包后 build/ 目录不在 asar 中导致托盘图标丢失的问题
-import iconPath from "../../build/icon.png?asset";
+// 使用 ?asset 后缀让 electron-vite 复制资源并返回运行时路径。
+// Windows 任务栏优先使用 ICO；托盘与其他平台使用 PNG，避免开发态回退 Electron 原子图标。
+import iconPngPath from "../../build/icon.png?asset";
+import iconIcoPath from "../../build/icon.ico?asset";
+const windowIconPath = process.platform === "win32" ? iconIcoPath : iconPngPath;
 
 // 构建标记：npm run dist:win:dev 打包时由 vite define 注入 true（构建期替换，非运行时环境变量）。
 declare const __PIDECK_DEV_BUILD__: boolean;
@@ -80,6 +82,10 @@ if (isDevBuild) {
 	// 必须在读取 settings / 版本单实例锁之前设置。
 	app.setPath("userData", resolvePackagedUserDataDir({ appData: app.getPath("appData") }));
 }
+
+// 开发态运行的是 electron.exe，必须显式覆盖应用名；否则 Windows 任务栏/Alt-Tab
+// 可能继续显示 Electron 的默认身份，即使 BrowserWindow 已设置品牌图标。
+app.setName("浙水智能体");
 
 // Linux XWayland 兼容层：仅当桌面宠物启用时才强制 ozone-platform=x11（#108，
 // 强制 XWayland 在部分 GNOME/Wayland 环境会导致主窗口不可见）。
@@ -1486,10 +1492,10 @@ function handleVersionFocusRequest(payload?: FocusPayload) {
 focusExistingWindow = handleVersionFocusRequest;
 
 function setupTray() {
-	// iconPath 由 electron-vite 的 ?asset 后缀自动解析，打包后也能正确定位
-	const icon = nativeImage.createFromPath(iconPath);
+	// 托盘使用 PNG 缩放，避免 ICO 多帧在不同 Electron 版本中取错尺寸。
+	const icon = nativeImage.createFromPath(iconPngPath);
 	tray = new Tray(icon.resize({ width: 16, height: 16 }));
-	tray.setToolTip("PiDeck");
+	tray.setToolTip("浙水智能体");
 	// C12：退出清理登记（before-quit 统一 runAll）
 	quitCleanup.register("tray", () => {
 		tray?.destroy();
@@ -1751,7 +1757,7 @@ async function createWindow() {
 		title: isolateDevByGitBranch && !isSharedDevBranch(devGitBranch)
 			? `浙水智能体 · ${devGitBranch}`
 			: "浙水智能体",
-		icon: iconPath,
+		icon: windowIconPath,
 		frame: windowOptions.frame,
 		titleBarStyle: windowOptions.titleBarStyle,
 		...(windowOptions.trafficLightPosition ? { trafficLightPosition: windowOptions.trafficLightPosition } : {}),

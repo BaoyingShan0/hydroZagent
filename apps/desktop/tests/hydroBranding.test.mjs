@@ -25,6 +25,15 @@ test("hydroZagent brand identity is consistent across package and boot surface",
   assert.match(rendererHtml, /AI 赋能水利 · 智慧守护江河/);
 });
 
+test("Windows runtime and tray use hydroZagent assets instead of Electron defaults", () => {
+  assert.match(mainSource, /import iconPngPath from "\.\.\/\.\.\/build\/icon\.png\?asset"/);
+  assert.match(mainSource, /import iconIcoPath from "\.\.\/\.\.\/build\/icon\.ico\?asset"/);
+  assert.match(mainSource, /const windowIconPath = process\.platform === "win32" \? iconIcoPath : iconPngPath/);
+  assert.match(mainSource, /app\.setName\("浙水智能体"\)/);
+  assert.match(mainSource, /icon: windowIconPath/);
+  assert.match(mainSource, /tray\.setToolTip\("浙水智能体"\)/);
+});
+
 test("welcome tagline and capability chips stay hidden above the composer", () => {
   assert.match(welcomeHeader, /<p hidden className=/);
   assert.match(welcomeHeader, /<div\s+hidden\s+className="mt-4 flex flex-wrap/);
