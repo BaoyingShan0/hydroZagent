@@ -7,12 +7,15 @@ import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } 
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { linter, lintGutter } from "@codemirror/lint";
 import { jsonParseLinter } from "@codemirror/lang-json";
+import { ClipboardPaste, Copy, Paperclip, Scissors, TextSelect } from "lucide-react";
 import { baseEditorExtensions, foldMarkerDOM, resolveEditorLanguage } from "../../utils/codemirrorSetup";
+import { readClipboardText, writeClipboard } from "../../utils/clipboard";
 import { t } from "../../i18n";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui-shadcn/dropdown-menu";
 
@@ -27,13 +30,17 @@ export type CodeMirrorEditorProps = {
 	onAttachSelection?: (startLine: number, endLine: number) => void;
 };
 
-/** 右键选区菜单状态：无选区时保持 null（不接管浏览器右键菜单） */
+/** 右键菜单状态：保存打开菜单时的稳定选区，避免菜单获焦后操作错位。 */
 type SelectionMenu = {
 	x: number;
 	y: number;
-	startLine: number;
-	endLine: number;
+	from: number;
+	to: number;
+	startLine: number | null;
+	endLine: number | null;
 };
+
+type EditorMenuCommand = "copy" | "cut" | "paste" | "selectAll";
 
 /** 统一封装：与旧 MonacoEditor 的 props 完全兼容（value/onChange/language/height/readOnly），
  * 外部切换时零成本替换。EditorView 生命周期由本组件托管：卸载 dispose、外部 value 变化
@@ -56,16 +63,71 @@ export const CodeMirrorEditor = memo(function CodeMirrorEditor({
 	const lastValueRef = useRef(value);
 	const [selectionMenu, setSelectionMenu] = useState<SelectionMenu | null>(null);
 
-	// 右键：存在文本选区时接管默认菜单，弹出「引用选中内容」；无选区不拦截（保留浏览器菜单）。
-	// 行号取 selection.main 的起止位置所在行（CM6 行号从 1 起，与编辑器 gutter 一致）。
+	// 右键始终使用应用菜单：有选区时保留选区；在选区外右键时把光标移到点击位置，
+	// 使「粘贴」落点符合桌面编辑器习惯。行号从 1 起，与 CodeMirror gutter 一致。
 	const handleContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
 		const view = viewRef.current;
-		const main = view?.state.selection.main;
-		if (!view || !main || main.from === main.to) return;
+		if (!view) return;
 		event.preventDefault();
-		const startLine = view.state.doc.lineAt(main.from).number;
-		const endLine = view.state.doc.lineAt(main.to).number;
-		setSelectionMenu({ x: event.clientX, y: event.clientY, startLine, endLine });
+		const main = view.state.selection.main;
+		const clickedPosition = view.posAtCoords({ x: event.clientX, y: event.clientY });
+		const clickedOutsideSelection = clickedPosition !== null
+			&& (main.empty || clickedPosition < main.from || clickedPosition > main.to);
+		const from = clickedOutsideSelection ? clickedPosition : main.from;
+		const to = clickedOutsideSelection ? clickedPosition : main.to;
+		if (clickedOutsideSelection) view.dispatch({ selection: { anchor: clickedPosition } });
+		setSelectionMenu({
+			x: event.clientX,
+			y: event.clientY,
+			from,
+			to,
+			startLine: from === to ? null : view.state.doc.lineAt(from).number,
+			endLine: from === to ? null : view.state.doc.lineAt(to).number,
+		});
+	};
+
+	/** 执行菜单命令。读写剪贴板统一走 Electron bridge，Web/preview 环境再降级浏览器 API。 */
+	const runMenuCommand = async (command: EditorMenuCommand) => {
+		const view = viewRef.current;
+		const menu = selectionMenu;
+		if (!view || !menu) return;
+		setSelectionMenu(null);
+
+		if (command === "selectAll") {
+			view.dispatch({ selection: { anchor: 0, head: view.state.doc.length }, scrollIntoView: true });
+			view.focus();
+			return;
+		}
+
+		const from = Math.min(menu.from, view.state.doc.length);
+		const to = Math.min(menu.to, view.state.doc.length);
+		if (command === "copy") {
+			if (from !== to) await writeClipboard(view.state.sliceDoc(from, to));
+			view.focus();
+			return;
+		}
+
+		// 只读实例永远不执行变更命令；菜单层也会隐藏剪切与粘贴。
+		if (readOnly) return;
+		if (command === "cut") {
+			if (from === to) return;
+			await writeClipboard(view.state.sliceDoc(from, to));
+			view.dispatch({ changes: { from, to, insert: "" }, selection: { anchor: from } });
+			view.focus();
+			return;
+		}
+
+		let clipboardText = readClipboardText();
+		if (!clipboardText && navigator.clipboard?.readText) {
+			clipboardText = await navigator.clipboard.readText().catch(() => "");
+		}
+		if (clipboardText) {
+			view.dispatch({
+				changes: { from, to, insert: clipboardText },
+				selection: { anchor: from + clipboardText.length },
+			});
+		}
+		view.focus();
 	};
 
 	useEffect(() => {
@@ -136,8 +198,10 @@ export const CodeMirrorEditor = memo(function CodeMirrorEditor({
 		view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: value } });
 	}, [value]);
 
+	const hasSelection = Boolean(selectionMenu && selectionMenu.from !== selectionMenu.to);
+
 	return <div ref={hostRef} style={{ height, minHeight: 60 }} className="codemirror-host" onContextMenu={handleContextMenu}>
-		{/* 引用选中内容：虚拟锚点钉在右键坐标上（与 FileContextMenu 同模式，Radix 处理视口碰撞/ESC） */}
+		{/* 虚拟锚点钉在右键坐标上（与 FileContextMenu 同模式，Radix 处理视口碰撞/ESC）。 */}
 		{selectionMenu && (
 			<DropdownMenu open onOpenChange={(open) => { if (!open) setSelectionMenu(null); }}>
 				<DropdownMenuTrigger
@@ -156,19 +220,47 @@ export const CodeMirrorEditor = memo(function CodeMirrorEditor({
 					}}
 				/>
 				<DropdownMenuContent align="start" side="bottom" className="min-w-44">
+					<DropdownMenuItem disabled={!hasSelection} onSelect={() => { void runMenuCommand("copy"); }}>
+						<Copy />
+						{t("common.copy")}
+					</DropdownMenuItem>
+					{!readOnly && (
+						<>
+							<DropdownMenuItem disabled={!hasSelection} onSelect={() => { void runMenuCommand("cut"); }}>
+								<Scissors />
+								{t("common.cut")}
+							</DropdownMenuItem>
+							<DropdownMenuItem onSelect={() => { void runMenuCommand("paste"); }}>
+								<ClipboardPaste />
+								{t("common.paste")}
+							</DropdownMenuItem>
+						</>
+					)}
+					<DropdownMenuItem onSelect={() => { void runMenuCommand("selectAll"); }}>
+						<TextSelect />
+						{t("common.selectAll")}
+					</DropdownMenuItem>
+					{hasSelection && onAttachSelection && (
+						<DropdownMenuSeparator />
+					)}
+					{hasSelection && onAttachSelection && selectionMenu.startLine !== null && selectionMenu.endLine !== null && (
 					<DropdownMenuItem
 						onSelect={() => {
 							const menu = selectionMenu;
 							setSelectionMenu(null);
-							onAttachSelectionRef.current?.(menu.startLine, menu.endLine);
+							if (menu.startLine !== null && menu.endLine !== null) {
+								onAttachSelectionRef.current?.(menu.startLine, menu.endLine);
+							}
 						}}
 					>
+						<Paperclip />
 						{t("editor.attachSelectionRange", {
 							range: selectionMenu.startLine === selectionMenu.endLine
 								? String(selectionMenu.startLine)
 								: `${selectionMenu.startLine}-${selectionMenu.endLine}`,
 						})}
 					</DropdownMenuItem>
+					)}
 				</DropdownMenuContent>
 			</DropdownMenu>
 		)}

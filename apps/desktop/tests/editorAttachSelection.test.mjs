@@ -22,12 +22,13 @@ test("App: listens to composer-attach-refs and appends refs with spacer", () => 
 
 test("CodeMirrorEditor: right-click with selection opens attach menu with line range", () => {
   const editor = readFileSync("src/renderer/src/components/app/CodeMirrorEditor.tsx", "utf8");
-  // 选区右键：无选区不接管（保留浏览器菜单），有选区时算起止行号
+  // 右键菜单始终接管；已有选区内右键保留选区并计算起止行号，选区外右键移动光标。
   assert.match(editor, /onAttachSelection\?: \(startLine: number, endLine: number\) => void/);
   assert.match(editor, /handleContextMenu/);
-  assert.match(editor, /main\.from === main\.to/);
-  assert.match(editor, /doc\.lineAt\(main\.from\)\.number/);
-  assert.match(editor, /doc\.lineAt\(main\.to\)\.number/);
+  assert.match(editor, /event\.preventDefault\(\)/);
+  assert.match(editor, /main\.empty \|\| clickedPosition < main\.from \|\| clickedPosition > main\.to/);
+  assert.match(editor, /doc\.lineAt\(from\)\.number/);
+  assert.match(editor, /doc\.lineAt\(to\)\.number/);
   // Radix DropdownMenu 虚拟锚点（与 FileContextMenu 同模式）
   assert.match(editor, /DropdownMenuTrigger/);
   assert.match(editor, /editor\.attachSelectionRange/);

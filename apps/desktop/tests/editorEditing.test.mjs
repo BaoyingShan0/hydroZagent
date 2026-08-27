@@ -43,6 +43,45 @@ test("editors bind Ctrl+/ comment toggle and JSON lint", () => {
   assert.match(editor, /resolvedLanguage\.language\.name === "json"/);
 });
 
+test("CodeMirror context menu exposes safe commands for editable and read-only modes", () => {
+  const editor = readFileSync("src/renderer/src/components/app/CodeMirrorEditor.tsx", "utf8");
+  // 右键无选区时也必须打开菜单，才能使用粘贴/全选；选区外右键把粘贴光标移到点击位置。
+  assert.match(editor, /event\.preventDefault\(\)/);
+  assert.match(editor, /view\.posAtCoords/);
+  assert.doesNotMatch(editor, /main\.from === main\.to\) return/);
+  // 复制、全选始终展示；剪切、粘贴只出现在非只读分支。
+  assert.match(editor, /runMenuCommand\("copy"\)/);
+  assert.match(editor, /runMenuCommand\("selectAll"\)/);
+  assert.match(editor, /\{!readOnly && \(/);
+  assert.match(editor, /runMenuCommand\("cut"\)/);
+  assert.match(editor, /runMenuCommand\("paste"\)/);
+  // 命令必须操作 CodeMirror 文档/选区，并复用应用剪贴板 bridge。
+  assert.match(editor, /writeClipboard\(view\.state\.sliceDoc\(from, to\)\)/);
+  assert.match(editor, /changes: \{ from, to, insert: "" \}/);
+  assert.match(editor, /readClipboardText\(\)/);
+  assert.match(editor, /changes: \{ from, to, insert: clipboardText \}/);
+  assert.match(editor, /selection: \{ anchor: 0, head: view\.state\.doc\.length \}/);
+  // 只读防线既在菜单可见性，也在命令执行层；原有引用选区能力不能丢。
+  assert.match(editor, /if \(readOnly\) return/);
+  assert.match(editor, /editor\.attachSelectionRange/);
+});
+
+test("FileDiffViewer labels preview, editable source, and read-only diff modes", () => {
+  const viewer = readFileSync("src/renderer/src/components/app/FileDiffViewer.tsx", "utf8");
+  const zh = readFileSync("src/renderer/src/i18n/rendererCopy.zh-CN.ts", "utf8");
+  const en = readFileSync("src/renderer/src/i18n/rendererCopy.en-US.ts", "utf8");
+  for (const key of ["editor.modePreviewReadOnly", "editor.modeSourceEditable", "editor.modeDiffReadOnly"]) {
+    assert.match(viewer, new RegExp(key.replace(".", "\\.")));
+    assert.match(zh, new RegExp(`"${key}"`));
+    assert.match(en, new RegExp(`"${key}"`));
+  }
+  assert.match(viewer, /<Badge/);
+  assert.match(viewer, /<ModeStatusIcon/);
+  // HTML 默认预览也必须先允许切回源码；仅从源码进入预览时才调用外部 HTML 预览。
+  assert.match(viewer, /if \(preview\) \{\s*setPreview\(false\)/);
+  assert.match(viewer, /else if \(isHtml && props\.onPreviewHtml\)/);
+});
+
 test("FileDiffViewer: markdown preview reuses .markdown-body + markdown-preview-chrome, no parallel legacy classes", () => {
   const viewer = readFileSync("src/renderer/src/components/app/FileDiffViewer.tsx", "utf8");
   const surfaces = readFileSync("src/renderer/src/styles/surfaces.css", "utf8");

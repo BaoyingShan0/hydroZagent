@@ -192,6 +192,8 @@ export function createPreviewApi(): PiDesktopApi {
 		readText: () => "",
 		readHtml: () => "",
 		readImage: () => "",
+		// 返回 false，让共享 clipboard helper 继续降级到浏览器 Clipboard API。
+		writeText: () => false,
 		writeImage: async () => false,
 	};
 	const createTerminalTab = async (agentId: string, shell?: string, cwd?: string) => {

@@ -78,5 +78,11 @@
 		"gaxios": {
 			"rimraf": "6.1.2"
 		}
+	},
+	"dependencies": {
+		"@fradser/pi-utils": "0.3.8",
+		"billion-context-pi": "0.1.49",
+		"pi-mcp-adapter": "2.27.0",
+		"pi-tracker": "0.3.0"
 	}
 }

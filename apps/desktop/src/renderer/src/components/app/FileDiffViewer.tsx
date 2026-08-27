@@ -1,7 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { t } from "../../i18n";
-import { ArrowLeft, Maximize, Minimize2, Rows2, SquareSplitHorizontal, X, Eye, FileCode } from "lucide-react";
+import { ArrowLeft, Maximize, Minimize2, Rows2, SquareSplitHorizontal, X, Eye, FileCode, GitCompareArrows } from "lucide-react";
 import { Button } from "../ui-shadcn/button";
+import { Badge } from "../ui-shadcn/badge";
 import { cn } from "../../lib/utils";
 import { MarkdownStream } from "../session/MarkdownStream";
 import { defaultUrlTransform } from "../session/MarkdownLinkCore";
@@ -282,6 +283,13 @@ export function FileDiffViewer(props: {
 	}, [props.filePath]);
 
 	const language = ext;
+	const isReadOnlyPreview = preview || isImage || isPdf;
+	const modeStatus = isDiffMode
+		? { label: t("editor.modeDiffReadOnly"), icon: GitCompareArrows, tone: "border-[var(--color-border-default)] bg-[var(--color-bg-muted)] text-[var(--color-text-secondary)]" }
+		: isReadOnlyPreview
+			? { label: t("editor.modePreviewReadOnly"), icon: Eye, tone: "border-[var(--color-border-default)] bg-[var(--color-bg-muted)] text-[var(--color-text-secondary)]" }
+			: { label: t("editor.modeSourceEditable"), icon: FileCode, tone: "border-[color-mix(in_srgb,var(--color-accent)_30%,transparent)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]" };
+	const ModeStatusIcon = modeStatus.icon;
 
 	const displayMode = props.displayMode ?? "drawer";
 	const isWorkbenchPane = displayMode === "split" || displayMode === "maximize";
@@ -365,16 +373,27 @@ export function FileDiffViewer(props: {
 					</span>
 				)}
 				<div className="file-diff-header-actions">
+					<Badge
+						variant="outline"
+						className={cn("h-6 gap-1 border px-2 font-normal", modeStatus.tone)}
+						aria-label={modeStatus.label}
+					>
+						<ModeStatusIcon className="size-3" aria-hidden="true" />
+						{modeStatus.label}
+					</Badge>
 					{(isMarkdown || isHtml || isSvg) && !isDiffMode && !loading && !error && (
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							title={preview ? t("editor.source") : t("editor.preview")}
 							onClick={() => {
-								if (isHtml && props.onPreviewHtml) {
+								// 当前在预览时，按钮目标一定是源码；HTML 也必须能返回可编辑态。
+								if (preview) {
+									setPreview(false);
+								} else if (isHtml && props.onPreviewHtml) {
 									props.onPreviewHtml(props.filePath);
 								} else {
-									setPreview(!preview);
+									setPreview(true);
 								}
 							}}
 						>

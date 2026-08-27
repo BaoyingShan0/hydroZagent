@@ -119,6 +119,22 @@ describe("readClipboardFilePaths", () => {
 	});
 });
 
+describe("writeClipboardText", () => {
+	test("writes text and verifies the native clipboard value", () => {
+		let stored = "";
+		const native = loadNativeClipboard({
+			clipboard: {
+				writeText: (text) => { stored = text; },
+				readText: () => stored,
+			},
+			nativeImage: {},
+		});
+		assert.equal(native.writeClipboardText("hydro"), true);
+		assert.equal(stored, "hydro");
+		assert.equal(native.writeClipboardText(null), false);
+	});
+});
+
 test("clipboard IPC is registered in main, preload, and shared channels", () => {
 	const channels = read("src/shared/ipc.ts");
 	const ipc = read("src/main/ipc/clipboardIpc.ts");
@@ -131,6 +147,7 @@ test("clipboard IPC is registered in main, preload, and shared channels", () => 
 		[],
 	);
 	assert.match(mainIndex, /registerClipboardIpc\(\{ appLogger \}\)/);
+	assert.match(preload, /writeText: \(text: string\) => clipboardSync\(ipcChannels\.clipboardWriteText, false\)/);
 	assert.match(preload, /clipboardWriteImage/);
 	assert.match(preload, /clipboardReadFilePaths/);
 	assert.doesNotMatch(preload, /clipboard\.readBuffer/);

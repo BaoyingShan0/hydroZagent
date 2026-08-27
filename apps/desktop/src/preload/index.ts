@@ -122,6 +122,7 @@ const api = {
 		readText: () => clipboardSync(ipcChannels.clipboardReadText, ""),
 		readHtml: () => clipboardSync(ipcChannels.clipboardReadHtml, ""),
 		readImage: () => clipboardSync(ipcChannels.clipboardReadImage, ""),
+		writeText: (text: string) => clipboardSync(ipcChannels.clipboardWriteText, false),
 		/** 异步写入图片：data URL 可能较大，不能走 sendSync。 */
 		writeImage: (dataUrl: string) =>
 			ipcRenderer.invoke(ipcChannels.clipboardWriteImage, dataUrl) as Promise<boolean>,

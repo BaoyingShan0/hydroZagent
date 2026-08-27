@@ -7,6 +7,7 @@ import {
 	readClipboardImageDataUrl,
 	readClipboardText,
 	writeClipboardImageDataUrl,
+	writeClipboardText,
 } from "../clipboard/nativeClipboard";
 
 export type ClipboardIpcDeps = {
@@ -16,7 +17,7 @@ export type ClipboardIpcDeps = {
 /**
  * 系统剪贴板必须走主进程：Electron 38 废弃了渲染进程/preload 直连 clipboard，
  * 复制图片会失败且 DevTools 只看到 deprecation 警告。
- * 读取用 sendSync（粘贴菜单/Ctrl+V 需要同步）；写入图片用 invoke（data URL 可能较大）。
+	 * 文本读写用 sendSync（右键菜单需要立即完成）；写入图片用 invoke（data URL 可能较大）。
  */
 export function registerClipboardIpc({ appLogger }: ClipboardIpcDeps): void {
 	ipcMain.on(ipcChannels.clipboardReadText, (event) => {
@@ -30,6 +31,15 @@ export function registerClipboardIpc({ appLogger }: ClipboardIpcDeps): void {
 	});
 	ipcMain.on(ipcChannels.clipboardReadFilePaths, (event) => {
 		event.returnValue = readClipboardFilePaths();
+	});
+	ipcMain.on(ipcChannels.clipboardWriteText, (event, text: unknown) => {
+		const ok = writeClipboardText(text);
+		event.returnValue = ok;
+		if (!ok) {
+			void appLogger.warn("clipboard", "native writeText failed", {
+				payloadChars: typeof text === "string" ? text.length : 0,
+			});
+		}
 	});
 	ipcMain.handle(ipcChannels.clipboardWriteImage, async (_event, dataUrl: unknown) => {
 		const result = writeClipboardImageDataUrl(dataUrl);

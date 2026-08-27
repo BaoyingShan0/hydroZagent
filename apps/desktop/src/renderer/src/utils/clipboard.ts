@@ -93,11 +93,11 @@ export function htmlToPlainText(html: string): string {
 export async function writeClipboard(text: string): Promise<void> {
   // 1. Electron 环境：通过 preload bridge 直接调用主进程 clipboard
   // （能力探测走 unknown 中转；preload 未暴露 writeText 时自然落到 Web API）
-  const pd = (window as unknown as { piDesktop?: { clipboard?: { writeText: (t: string) => void } } }).piDesktop;
+  const pd = (window as unknown as { piDesktop?: { clipboard?: { writeText: (t: string) => boolean | void } } }).piDesktop;
   if (pd?.clipboard?.writeText) {
     try {
-      pd.clipboard.writeText(text);
-      return;
+      // preview/browser 桩返回 false 时继续走 Web API；旧 bridge 返回 void 仍视为成功。
+      if (pd.clipboard.writeText(text) !== false) return;
     } catch {
       // preload bridge 写入失败，回退到 Web API
     }

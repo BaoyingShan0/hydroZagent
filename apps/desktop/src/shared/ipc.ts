@@ -516,6 +516,7 @@ export const ipcChannels = {
 	clipboardReadHtml: "clipboard:read-html",
 	clipboardReadImage: "clipboard:read-image",
 	clipboardReadFilePaths: "clipboard:read-file-paths",
+	clipboardWriteText: "clipboard:write-text",
 	clipboardWriteImage: "clipboard:write-image",
 
 } as const;

@@ -18,6 +18,17 @@ export function readClipboardText(): string {
 	}
 }
 
+/** 文本写入留在主进程，避免 renderer 的 Web Clipboard API 受窗口焦点/权限限制。 */
+export function writeClipboardText(text: unknown): boolean {
+	if (typeof text !== "string") return false;
+	try {
+		clipboard.writeText(text);
+		return clipboard.readText() === text;
+	} catch {
+		return false;
+	}
+}
+
 export function readClipboardHtml(): string {
 	try {
 		return clipboard.readHTML() || "";
