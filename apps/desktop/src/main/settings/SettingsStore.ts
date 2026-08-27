@@ -98,9 +98,8 @@ const defaultSettings: AppSettings = {
 	backgroundImage: "",
 	backgroundImageOpacity: 0.8,
   language: "system",
-  // 默认最大化：与历史 createWindow 在 ready-to-show 后 maximize() 的行为一致
-  // （1480×960 只是最大化前的兜底尺寸，不是最终展示态）
-  startupWindowMode: "last",
+  // 浙水品牌启动页默认占满屏幕；用户仍可在常用设置中切换为记忆尺寸、最大化或固定尺寸。
+  startupWindowMode: "fullscreen",
   piEnvironmentChecked: false,
   sessionTabOpenMode: "preview",
   // 忙碌时发送默认「插入当前回合」（对齐 pi 历史行为）；dsh 会话此前默认排队，

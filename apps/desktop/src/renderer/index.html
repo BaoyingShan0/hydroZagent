@@ -11,7 +11,7 @@
     />
     <title></title>
     <style>
-      /* 启动画面：独立于 #root，React 挂载后淡出移除；不依赖外部字体/图片，保证首帧极快。 */
+      /* 启动画面：独立于 #root，React 挂载后淡出移除；品牌背景由 Vite 随渲染层产物打包。 */
       /* 注意：reset 必须限定在 boot-overlay 内——全局 * 规则是无层级的，
          会压过 Tailwind @layer utilities 的所有间距工具类（#115 曾因此导致菜单/弹窗无内边距）。 */
       #boot-overlay, #boot-overlay * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -49,6 +49,8 @@
       }
 
       .boot-brand {
+        position: relative;
+        z-index: 1;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -100,12 +102,31 @@
       }
 
       .boot-progress {
+        position: relative;
+        z-index: 1;
         width: 120px;
         height: 3px;
         border-radius: 999px;
         background: color-mix(in srgb, var(--hydro-qing) 10%, transparent);
         overflow: hidden;
         animation: boot-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+      }
+
+      /* 与新建对话页共用 42vh / 40% 透明度 / 顶部渐隐的江南水系背景参数。 */
+      .boot-backdrop {
+        position: absolute;
+        inset-inline: 0;
+        bottom: 0;
+        z-index: 0;
+        width: 100%;
+        height: 42vh;
+        object-fit: cover;
+        object-position: bottom;
+        opacity: 0.4;
+        pointer-events: none;
+        user-select: none;
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 38%);
+        mask-image: linear-gradient(to bottom, transparent 0%, #000 38%);
       }
       .boot-progress-bar {
         width: 42%;
@@ -151,6 +172,12 @@
     <div id="root"></div>
     <!-- 启动画面覆盖层：React 挂载后通过 fade-out 动画淡出再移除 -->
     <div id="boot-overlay">
+      <img
+        class="boot-backdrop"
+        src="/src/assets/brand/boot-backdrop.png"
+        alt=""
+        aria-hidden="true"
+      />
       <div class="boot-brand">
         <div class="boot-logo">
           <svg viewBox="0 0 120 120" aria-hidden="true">

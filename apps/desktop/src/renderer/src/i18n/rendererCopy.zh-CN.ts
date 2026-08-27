@@ -2446,7 +2446,7 @@ export const zhCN = {
   "settings.startupWindow.large": "窗口 · 大 (1480×960)",
   "settings.startupWindow.maximized": "最大化",
   "settings.startupWindow.fullscreen": "全屏",
-  "settings.startupWindowModeDesc": "下次启动时应用。默认最大化（与历史行为一致，不挡任务栏）。",
+  "settings.startupWindowModeDesc": "下次启动时应用。出厂默认全屏，也可改为记忆上次窗口大小。",
   "settings.startupWindowMode": "启动窗口大小",
   "settings.singleInstanceDesc": "开启后，同一版本再次打开会唤起已有窗口（含托盘隐藏）。不同版本（如 0.6.7 与 0.6.8）可同时运行。开发模式与正式版数据目录隔离。关闭后允许同版本多开。修改后需重启生效。",
   "settings.singleInstance": "单实例运行（复用窗口）",

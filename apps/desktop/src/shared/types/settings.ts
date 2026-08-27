@@ -80,7 +80,7 @@ export type AppSettings = {
 	backgroundImageOpacity: number;
 	/** 界面语言，system 跟随系统语言；pseudo 用于长文案布局压力测试 */
 	language: AppLanguageMode;
-	/** 启动时主窗口尺寸预设，默认 last（上次窗口大小，读不到时顺延 maximized） */
+	/** 启动时主窗口尺寸预设，出厂默认 fullscreen；用户可改为记忆上次尺寸或其他预设 */
 	startupWindowMode: StartupWindowMode;
 	piEnvironmentChecked: boolean;
 	/** 最近一次 pi 环境检测成功的结果缓存（命令路径 + 版本），打开设置直接显示，不重复检测 */

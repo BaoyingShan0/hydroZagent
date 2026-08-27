@@ -105,7 +105,7 @@ let previewSettings: AppSettings = {
 	backgroundImage: "",
 	backgroundImageOpacity: 0.8,
 	language: "system",
-	startupWindowMode: "last",
+	startupWindowMode: "fullscreen",
 	piEnvironmentChecked: true,
 	/** 扩展禁用白名单：与 SettingsStore 默认一致，预览壳不启用白名单 */
 	/** 扩展禁用白名单：与 SettingsStore 默认一致，预览壳不启用白名单 */

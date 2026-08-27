@@ -525,7 +525,7 @@ export function App() {
 	backgroundImage: "",
 	backgroundImageOpacity: 0.8,
     language: "system",
-    startupWindowMode: "last",
+    startupWindowMode: "fullscreen",
     piEnvironmentChecked: false,
     /** 扩展禁用白名单：与 SettingsStore 默认一致，空数组 = 不启用白名单（首屏未拉到真实设置前的默认值） */
     /** 扩展禁用白名单：与 SettingsStore 默认一致，空数组 = 不启用白名单（首屏未拉到真实设置前的默认值） */

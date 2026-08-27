@@ -2470,7 +2470,7 @@ export const enUS: Record<TranslationKey, string> = {
   "settings.startupWindow.large": "Window · Large (1480×960)",
   "settings.startupWindow.maximized": "Maximized",
   "settings.startupWindow.fullscreen": "Fullscreen",
-  "settings.startupWindowModeDesc": "Applied on next launch. Default is maximized (historical behavior; keeps the taskbar visible).",
+  "settings.startupWindowModeDesc": "Applied on next launch. The factory default is fullscreen; you can also restore the last window size.",
   "settings.startupWindowMode": "Startup window size",
   "settings.singleInstanceDesc": "When enabled, reopening the same version focuses the existing window (including tray-hidden). Different versions (e.g. 0.6.7 and 0.6.8) can run side by side. Dev mode uses a separate data directory from the packaged app. Disable to allow multiple instances of the same version. Restart required.",
   "settings.singleInstance": "Single instance (reuse window)",
