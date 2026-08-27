@@ -16,6 +16,10 @@ const workspaceChrome = readFileSync(
   "utf8",
 );
 const composerAtoms = readFileSync("src/renderer/src/atoms/composer-atoms.ts", "utf8");
+const composerController = readFileSync(
+  "src/renderer/src/hooks/useSessionComposerController.ts",
+  "utf8",
+);
 const chatBootstrap = readFileSync(
   "src/renderer/src/utils/chatSessionBootstrap.ts",
   "utf8",
@@ -34,7 +38,7 @@ test("empty state renders the new-session surface bound to a renderer-only virtu
 
 test("empty state no longer auto-creates sessions (startup / closing all tabs)", () => {
   // 回归：曾有的「关闭全部 Tab 自动建匿名会话并激活」循环已移除——引导页挂载
-  // 只显示空白输入框，首次发送才创建真实会话。闸门状态 allTabsClosedByUser
+  // 只显示空白输入框，首次输入变更才创建真实会话。闸门状态 allTabsClosedByUser
   // 随之删除。
   assert.doesNotMatch(emptyState, /autoCreateOnMount/);
   assert.doesNotMatch(emptyState, /autoCreatedRef|useEffect\(/);
@@ -44,11 +48,13 @@ test("empty state no longer auto-creates sessions (startup / closing all tabs)",
   assert.doesNotMatch(workspaceChrome, /setAllTabsClosedByUser/);
 });
 
-test("virtual session is promoted to a real catalog session on first send", () => {
-  // App.ensureSessionForSend：虚拟会话发送时统一创建项目 draft 会话（Chat 项目
+test("virtual session is promoted to a real catalog session on first composer interaction", () => {
+  // App.ensureSessionForInteraction：虚拟会话首次输入、附件或粘贴变更时统一创建
+  // 项目 draft 会话（Chat 项目
   // 也走普通可保存会话，不再匿名——匿名仅保留给侧栏「新建临时对话」入口），
   // composer 状态整体提升（promoteSessionComposerStateAtom），选中并登记 Tab；
-  // 并发发送复用同一个提升 promise。
+  // 连续输入/并发发送复用同一个提升 promise，发送本身保留兜底。
+  assert.match(app, /const ensureSessionForInteraction = useCallback/);
   assert.match(app, /sessionId !== GUIDE_BOOTSTRAP_SESSION_ID/);
   assert.match(app, /guideBootstrapPromotionRef/);
   assert.match(app, /api\.sessions\.createDraft/);
@@ -60,11 +66,37 @@ test("virtual session is promoted to a real catalog session on first send", () =
   assert.match(composerAtoms, /sessionAttachmentsByIdAtom/);
   assert.match(composerAtoms, /sessionComposerModeByIdAtom/);
   assert.match(composerAtoms, /sessionSendStateByIdAtom/);
+  assert.match(composerController, /sessionId !== GUIDE_BOOTSTRAP_SESSION_ID/);
+  assert.match(composerController, /const retainSessionAfterComposerInteraction = useCallback/);
+  assert.match(
+    composerController,
+    /setDraftAtom\(\{ sessionId, value: next \}\);[\s\S]{0,220}if \(next !== current\) retainSessionAfterComposerInteraction\(\)/,
+  );
+  assert.match(
+    composerController,
+    /setAttachmentsAtom\(\{ sessionId, value: next \}\);[\s\S]{0,220}if \(changed\) retainSessionAfterComposerInteraction\(\)/,
+  );
+  assert.match(
+    composerController,
+    /setPasteFilesAtom\(\{ sessionId, value: next \}\);[\s\S]{0,220}if \(changed\) retainSessionAfterComposerInteraction\(\)/,
+  );
+});
+
+test("explicit new-session actions stay virtual until the composer changes", () => {
+  // 侧栏新建、Tab 栏 +、空态重试均只切到 renderer-only 新建页，不调用
+  // useSessionActions.createSessionDraft，避免空白会话提前进入 Catalog/侧栏。
+  assert.match(app, /const openNewSessionSurface = useCallback/);
+  assert.match(app, /selectProjectCommand\(projectId\)/);
+  assert.doesNotMatch(app, /createSessionDraft: runCreateSessionDraft/);
+  assert.doesNotMatch(app, /createSessionDraftWithTab/);
+  assert.match(app, /createDraft: async \(projectId\) => \{\s*await openNewSessionSurface\(projectId\)/);
+  assert.match(app, /onNewSessionInProject:[\s\S]{0,120}openNewSessionSurface\(projectId\)/);
+  assert.match(app, /runCreateSessionDraft: async \(\) => \{\s*await openNewSessionSurface\(\)/);
 });
 
 test("empty state offers a project switcher listing joined projects", () => {
   // 引导页 Logo 下方的项目名升级为下拉：列出已加入的全部项目（含内置 Chat），
-  // 切换只走 selectProject 语义（换 activeProjectId，不创建会话）；发送时按
+  // 切换只走 selectProject 语义（换 activeProjectId，不创建会话）；输入时按
   // 选中项目创建。
   assert.match(emptyState, /projects: Project\[\]/);
   assert.match(emptyState, /onSelectProject: \(projectId: string\) => void/);

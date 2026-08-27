@@ -19,3 +19,20 @@ test("sidebar shows the add-directory guide when only the built-in Chat exists",
 	// 点击触发主进程目录选择器（原生 dialog 不阻塞页面，测试随 app 关闭结束）
 	await addBtn.first().click();
 });
+
+test("new session stays out of the sidebar until the composer changes", async ({ window }) => {
+	await expect(window.locator("#boot-overlay")).toHaveCount(0, { timeout: 20_000 });
+	const newSession = window.getByRole("button", { name: "新会话", exact: true });
+	await expect(newSession).toBeVisible({ timeout: 15_000 });
+	const sessionRows = window.locator(".session-row");
+	const rowCountBefore = await sessionRows.count();
+
+	await newSession.click();
+	const composer = window.locator(".composer .rich-input");
+	await expect(composer).toHaveAttribute("contenteditable", "true", { timeout: 30_000 });
+	await expect(sessionRows).toHaveCount(rowCountBefore);
+
+	await composer.fill("尚未提交的草稿");
+	await expect(sessionRows).toHaveCount(rowCountBefore + 1, { timeout: 15_000 });
+	await expect(composer).toContainText("尚未提交的草稿");
+});

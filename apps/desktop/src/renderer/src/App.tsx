@@ -180,7 +180,6 @@ import type {
   ImageContent,
   PiCommand,
   Project,
-  AgentBackend,
   SessionLaunchPreferences,
   SessionRecord,
   SessionSummary,
@@ -229,8 +228,8 @@ export function App() {
   currentSessionIdRef.current = currentSessionId;
   const openSessionRequestRef = useRef(0);
   const creatingSessionDraftRef = useRef<Set<string>>(new Set());
-  // 引导页虚拟会话提升并发闸：首次发送触发创建真实会话时登记 promise，同一帧内
-  // 的并发发送（如快速双击）复用同一次提升，避免建出两个会话。
+  // 引导页虚拟会话提升并发闸：首次输入变更触发创建真实会话时登记 promise，
+  // 同一帧内的连续输入或发送复用同一次提升，避免建出两个会话。
   const guideBootstrapPromotionRef = useRef<Promise<string> | undefined>(undefined);
 
   // 项目的 git worktree 列表：{ parentId -> WorktreeEntry[] }
@@ -1288,7 +1287,6 @@ export function App() {
     openSidebarSessionById: runOpenSidebarSessionById,
     copySidebarSession: runCopySidebarSession,
     exportSidebarSession: runExportSidebarSession,
-    createSessionDraft: runCreateSessionDraft,
     createAnonymousSession: runCreateAnonymousSession,
   } = useSessionActions({
     openSessionRequestRef,
@@ -1322,14 +1320,17 @@ export function App() {
     });
   }, [workspaceChrome, selectSessionCommand, selectProjectCommand]);
 
-  /** 新建会话：选中 + 登记常驻 Tab（chrome 与 selection 在 App 边界组合） */
-  const createSessionDraftWithTab = useCallback(
-    async (projectId?: string, preferences: SessionLaunchPreferences = {}, backend?: AgentBackend) => {
-      const session = await runCreateSessionDraft(projectId, preferences, backend);
-      if (session) workspaceChrome.registerOpenSession(session.id, "permanent");
-      return session;
+  /**
+   * 显式“新建会话”只打开 renderer-only 新建页，不提前创建 Catalog 记录。
+   * 首次输入/附件/粘贴变更再由 ensureSessionForInteraction 提升为真实会话；
+   * 因而完全未操作的新建页不会出现在左侧列表。
+   */
+  const openNewSessionSurface = useCallback(
+    async (projectId = activeProjectId) => {
+      if (!projectId || !projects.some((project) => project.id === projectId)) return;
+      selectProjectCommand(projectId);
     },
-    [runCreateSessionDraft, workspaceChrome],
+    [activeProjectId, projects, selectProjectCommand],
   );
 
   const createAnonymousSessionWithTab = useCallback(
@@ -1372,13 +1373,12 @@ export function App() {
     store,
   ]);
 
-  // 引导页空白输入框（虚拟会话 GUIDE_BOOTSTRAP_SESSION_ID）的发送钩子：首次
-  // 发送时创建真实 Catalog 会话（Chat 匿名 / 非 Chat draft），把 composer 状态
-  // 整体提升到新会话（promoteSessionComposerStateAtom），随后选中并登记 Tab，
-  // 返回真实 sessionId 让发送链路继续；非虚拟会话直接透传（保持签名兼容）。
-  // 并发发送（快速双击）复用 guideBootstrapPromotionRef 里的同一个提升 promise，
-  // 避免建出两个会话。创建即用户意图（已输入消息），Chat 拉起 pi 是预期行为。
-  const ensureSessionForSend = useCallback(
+  // 引导页空白输入框（虚拟会话 GUIDE_BOOTSTRAP_SESSION_ID）的提升钩子：首次
+  // 输入、附件或粘贴变更时创建真实 Catalog 会话，把 composer 状态整体提升到
+  // 新会话（promoteSessionComposerStateAtom），随后选中并登记 Tab。发送链路继续
+  // 调用此钩子作为兜底；非虚拟会话直接透传（保持签名兼容）。连续输入/并发发送
+  // 复用 guideBootstrapPromotionRef 里的同一个 promise，避免建出两个会话。
+  const ensureSessionForInteraction = useCallback(
     async (sessionId: string) => {
       if (sessionId !== GUIDE_BOOTSTRAP_SESSION_ID) return sessionId;
       if (guideBootstrapPromotionRef.current) return guideBootstrapPromotionRef.current;
@@ -1406,7 +1406,7 @@ export function App() {
           ...launchPreferences,
         });
         upsertSession(session);
-        // 引导页发送时 useSessionSend 已把 user 消息乐观写入虚拟会话 cache；
+        // 引导页直接发送时 useSessionSend 已把 user 消息乐观写入虚拟会话 cache；
         // 提升时搬到真实会话——否则切页后新会话空态与引导页视觉相同，
         // 要等 agent 启动、回复流入后页面才「动」，用户误以为发送没生效。
         const bootstrapMessages =
@@ -1440,7 +1440,6 @@ export function App() {
       selectSessionCommand,
       upsertSession,
       workspaceChrome,
-      settings.defaultAgentBackend,
     ],
   );
 
@@ -2662,7 +2661,7 @@ export function App() {
       beginDrag: workspaceChrome.beginDrag,
       endDrag: workspaceChrome.endDrag,
       createDraft: async (projectId) => {
-        await createSessionDraftWithTab(projectId);
+        await openNewSessionSurface(projectId);
       },
       createAnonymous: async (projectId) => {
         await createAnonymousSessionWithTab(projectId);
@@ -2822,7 +2821,7 @@ export function App() {
       }))
       .sort((a, b) => Number(b.isChat) - Number(a.isChat)),
     onNewSessionInProject: (projectId: string) => {
-      void createSessionDraftWithTab(projectId);
+      void openNewSessionSurface(projectId);
     },
     onTogglePin: workspaceChrome.togglePin,
     onReorder: workspaceChrome.reorderTab,
@@ -2887,11 +2886,11 @@ export function App() {
       abortAgent,
       restartActiveAgent,
       runCreateSessionDraft: async () => {
-        await createSessionDraftWithTab();
+        await openNewSessionSurface();
       },
       enqueueSessionPrompt,
       insertQuickPrompt,
-      ensureSessionId: ensureSessionForSend,
+      ensureSessionId: ensureSessionForInteraction,
       resendUserMessage,
       editMessage,
       deleteMessage,
@@ -2939,7 +2938,7 @@ export function App() {
       activeProjectId,
       availableTerminalHeight,
       configOpen,
-      createSessionDraftWithTab,
+      openNewSessionSurface,
       changeChatPath,
       deleteMessage,
       diffFilePath,
@@ -2947,7 +2946,7 @@ export function App() {
       editMessage,
       enqueueSessionPrompt,
       switchBranch,
-      ensureSessionForSend,
+      ensureSessionForInteraction,
       environmentDialog,
       forkFromUserMessage,
       forkingMessageId,
@@ -3034,7 +3033,7 @@ export function App() {
         >
           <ResizablePanel id="empty-main" minSize={200} className="flex min-h-0 flex-col">
             {/* 无会话空态：引导页 = 新建页面形态（居中 ComposerArea + 虚拟会话），
-                不登记 Tab；首次发送才由 ensureSessionForSend 创建真实会话并落 Tab */}
+                不登记 Tab；首次输入变更由 ensureSessionForInteraction 创建真实会话并落 Tab */}
             <ProjectEmptyState
               activeProject={activeProject}
               projects={projects}

@@ -19,14 +19,14 @@ import { HydroWelcomeBackdrop, HydroWelcomeHeader } from "./HydroWelcomeHeader";
  *
  * 有项目：直接挂「新建页面」同源的 SessionStartSurface（居中 ComposerArea +
  * 快捷动作），绑定 renderer-only 虚拟会话 ID——不创建 Catalog 记录、不拉起 pi、
- * 不占用 Tab 栏；首次发送由 App.ensureSessionForSend 创建真实会话（Chat 匿名 /
- * 非 Chat draft）并把 composer 状态整体提升过去，随后才登记 Tab。
+ * 不占用 Tab 栏；首次输入变更由 App.ensureSessionForInteraction 创建真实会话，
+ * 并把 composer 状态整体提升过去，随后才登记 Tab。发送路径保留同一提升兜底。
  * 无项目：只保留添加项目入口。
  */
 export function ProjectEmptyState(props: {
   activeProject?: Project;
   /** 可切换的目标项目列表：下拉只切换 activeProjectId（selectProject 语义），
-      不创建会话；首次发送按当前选中项目创建（App.ensureSessionForSend） */
+      不创建会话；首次输入变更按当前选中项目创建（App.ensureSessionForInteraction） */
   projects: Project[];
   onAddProject: () => void;
   onSelectProject: (projectId: string) => void;
@@ -53,9 +53,9 @@ export function ProjectEmptyState(props: {
   }
 
   // 有项目：引导页 = 新建页面形态。虚拟会话只存在于渲染层 composer atoms，
-  // 发送时由 promoteSessionComposerStateAtom 整体搬到真实会话，输入不丢失。
+  // 首次输入变更时由 promoteSessionComposerStateAtom 整体搬到真实会话，输入不丢失。
   // 项目下拉只切换 activeProjectId——切项目后仍留在引导页（currentSessionId 保持
-  // 空），发送时按选中项目创建；下拉列表 = 已加入的全部项目（含内置 Chat）。
+  // 空），输入时按选中项目创建；下拉列表 = 已加入的全部项目（含内置 Chat）。
   return (
     <SessionStartSurface
       sessionId={GUIDE_BOOTSTRAP_SESSION_ID}

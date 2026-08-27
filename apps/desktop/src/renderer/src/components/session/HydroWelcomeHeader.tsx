@@ -1,7 +1,7 @@
 import { CloudRain, Droplets, Gauge, Waves } from "lucide-react";
 import { t } from "../../i18n";
-import { LogoMark } from "./SurfaceParts";
 import welcomeBackdrop from "../../assets/brand/welcome-backdrop.png";
+import welcomeLogo from "../../assets/brand/HydroZagent_logo_idea1_no_words.png";
 
 const CAPABILITIES = [
   { key: "hydro.term.hydrology" as const, icon: Droplets },
@@ -14,8 +14,14 @@ const CAPABILITIES = [
 export function HydroWelcomeHeader() {
   return (
     <div className="relative z-10 flex max-w-[760px] flex-col items-center text-center">
-      <LogoMark size={72} />
-      <h1 className="mt-6 font-brand text-[30px] leading-[42px] font-semibold tracking-[0.02em] text-text-primary">
+      <img
+        src={welcomeLogo}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        className="h-auto w-[148px] max-w-[44vw] select-none object-contain mix-blend-multiply"
+      />
+      <h1 className="mt-4 font-brand text-[30px] leading-[42px] font-semibold tracking-[0.02em] text-text-primary">
         {t("hydro.welcome.title")}
       </h1>
       <p className="mt-3 font-brand text-[15px] leading-[24px] font-normal tracking-[0.06em] text-text-secondary">

@@ -108,6 +108,7 @@ import {
   processComposerImageFile,
 } from "../utils/composerImages";
 import { PASTE_TO_FILE_MIN_CHARS } from "../rendererUtils";
+import { GUIDE_BOOTSTRAP_SESSION_ID } from "../utils/chatSessionBootstrap";
 import { showNotice } from "../utils/notice";
 import {
   requireSessionCommand,
@@ -429,22 +430,45 @@ export function useSessionComposerController(
     draftGuardRef.current = markComposerDraftMutation(draftGuardRef.current);
   }, [sessionId]);
 
+  // 新建页使用 renderer-only 虚拟 ID。用户一旦实际改变文字、附件或粘贴内容，
+  // 就异步提升为真实会话；不等待提交，因此之后即使清空输入也仍会保留在侧栏。
+  // App 侧有并发闸，连续键入只会创建一个会话；失败后下一次操作可重试。
+  const retainSessionAfterComposerInteraction = useCallback(() => {
+    if (sessionId !== GUIDE_BOOTSTRAP_SESSION_ID || !ensureSessionId) return;
+    void ensureSessionId(sessionId).catch((error) => {
+      showNotice(error instanceof Error ? error.message : String(error), 4000);
+    });
+  }, [ensureSessionId, sessionId]);
+
   const setDraft = useCallback((value: string | ((current: string) => string)) => {
     markDraftMutation();
-    setDraftAtom({ sessionId, value });
-  }, [markDraftMutation, sessionId, setDraftAtom]);
+    const current = store.get(sessionDraftByIdAtom)[sessionId] ?? "";
+    const next = typeof value === "function" ? value(current) : value;
+    setDraftAtom({ sessionId, value: next });
+    // TipTap 挂载/内容同步也可能回调 onChange("")；空到空不是用户输入，
+    // 不能因此把未操作的新建页写进 Catalog。
+    if (next !== current) retainSessionAfterComposerInteraction();
+  }, [markDraftMutation, retainSessionAfterComposerInteraction, sessionId, setDraftAtom, store]);
 
   const setAttachments = useCallback((
     value: ImageContent[] | ((current: ImageContent[]) => ImageContent[]),
   ) => {
-    setAttachmentsAtom({ sessionId, value });
-  }, [sessionId, setAttachmentsAtom]);
+    const current = store.get(sessionAttachmentsByIdAtom)[sessionId] ?? [];
+    const next = typeof value === "function" ? value(current) : value;
+    setAttachmentsAtom({ sessionId, value: next });
+    const changed = next.length !== current.length || next.some((item, index) => item !== current[index]);
+    if (changed) retainSessionAfterComposerInteraction();
+  }, [retainSessionAfterComposerInteraction, sessionId, setAttachmentsAtom, store]);
 
   const setPasteFiles = useCallback((
     value: PastedTextFile[] | ((current: PastedTextFile[]) => PastedTextFile[]),
   ) => {
-    setPasteFilesAtom({ sessionId, value });
-  }, [sessionId, setPasteFilesAtom]);
+    const current = store.get(sessionPasteFilesByIdAtom)[sessionId] ?? [];
+    const next = typeof value === "function" ? value(current) : value;
+    setPasteFilesAtom({ sessionId, value: next });
+    const changed = next.length !== current.length || next.some((item, index) => item !== current[index]);
+    if (changed) retainSessionAfterComposerInteraction();
+  }, [retainSessionAfterComposerInteraction, sessionId, setPasteFilesAtom, store]);
 
   const setMode = useCallback((nextMode: ComposerAgentMode) => {
     // 生图历史是独立消息协议，普通/计划/目标模式的命令语义不适用；
