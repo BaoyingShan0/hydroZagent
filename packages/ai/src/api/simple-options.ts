@@ -11,10 +11,18 @@ import { estimateContextTokens } from "../utils/estimate.ts";
 
 const CONTEXT_SAFETY_TOKENS = 4096;
 const MIN_MAX_TOKENS = 1;
+/**
+ * Conservative context window assumed when a model reports no real limit
+ * (unset / zero / negative). Previously such models were left unclamped, so an
+ * optimistic or missing config could reserve more output than the agent's true
+ * ceiling and the request would fail outright. Clamping against this floor keeps
+ * unknown models safe; a real value from the model catalog always takes priority.
+ */
+const FALLBACK_CONTEXT_WINDOW = 128_000;
 
 export function clampMaxTokensToContext(model: Model<Api>, context: Context, maxTokens: number): number {
-	if (model.contextWindow <= 0) return Math.max(MIN_MAX_TOKENS, maxTokens);
-	const available = model.contextWindow - estimateContextTokens(context).tokens - CONTEXT_SAFETY_TOKENS;
+	const contextWindow = model.contextWindow > 0 ? model.contextWindow : FALLBACK_CONTEXT_WINDOW;
+	const available = contextWindow - estimateContextTokens(context).tokens - CONTEXT_SAFETY_TOKENS;
 	return Math.min(maxTokens, Math.max(MIN_MAX_TOKENS, available));
 }
 

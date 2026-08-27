@@ -70,12 +70,12 @@ import { isValidProviderName } from "../../shared/providerName";
 
 const api: PiDesktopApi = (window as unknown as { piDesktop: PiDesktopApi })
 	.piDesktop;
-const DEFAULT_MODEL_CONFIG: Pick<
-	ModelItem,
-	"contextWindow" | "maxTokens" | "reasoning" | "input"
-> = {
-	contextWindow: 1000000,
-	maxTokens: 128000,
+// Capacity (contextWindow / maxTokens) is intentionally left unset for new models:
+// optimistic defaults like 1M/128k silently override the ModelSpec catalog autofill
+// (which only fills empty fields) and cause context-overflow request failures against
+// agents whose real limits are much smaller. Leaving them undefined lets the catalog
+// (listing + pi-ai) supply real values, with a conservative runtime clamp as backstop.
+const DEFAULT_MODEL_CONFIG: Pick<ModelItem, "reasoning" | "input"> = {
 	reasoning: true,
 	input: ["text", "image"],
 };
