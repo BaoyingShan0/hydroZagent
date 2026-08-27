@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>浙水智能体 hydroZagent — 汇报</title>
+    <style>
+      :root {
+        --qingbi: #6fafc0;
+        --shenqing: #365763;
+        --zhushe: #c94f45;
+        --bg: #f7f8f7;
+        --text: #262626;
+        --gray: #5b6a76;
+        --white: #ffffff;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        font-family:
+          "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+        background: #222;
+      }
+
+      /* ---- deck switcher (top bar) ---- */
+      #bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 20px;
+        background: var(--shenqing);
+        color: var(--white);
+        font-size: 13px;
+        letter-spacing: 0.02em;
+      }
+      #bar .brand {
+        font-weight: bold;
+        margin-right: 18px;
+        white-space: nowrap;
+      }
+      #bar button {
+        padding: 5px 14px;
+        border: none;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.15);
+        color: var(--white);
+        font-size: 13px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      #bar button:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+      #bar button.active {
+        background: var(--qingbi);
+        color: var(--shenqing);
+        font-weight: bold;
+      }
+
+      /* ---- slide container ---- */
+      #stage {
+        margin-top: 44px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: calc(100vh - 44px);
+        padding: 30px 20px;
+      }
+      #slideshow {
+        position: relative;
+        width: min(100%, 1280px);
+        aspect-ratio: 16 / 9;
+        background: var(--bg);
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35);
+      }
+
+      /* ---- header band ---- */
+      #slideshow::before {
+        content: "";
+        position: absolute;
+        inset: 0 0 auto 0;
+        height: 88px;
+        background: var(--shenqing);
+        z-index: 1;
+      }
+      #slideshow::after {
+        content: "";
+        position: absolute;
+        top: 88px;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: var(--zhushe);
+        z-index: 2;
+      }
+
+      /* ---- per-slide ---- */
+      .slide {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        padding: 100px 64px 48px 64px;
+        opacity: 0;
+        pointer-events: none;
+        transition:
+          opacity 0.35s ease,
+          transform 0.35s ease;
+        transform: translateY(6px);
+      }
+      .slide.active {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+      }
+
+      /* title */
+      .slide .title {
+        font-size: clamp(24px, 3vw, 38px);
+        font-weight: bold;
+        color: var(--white);
+        position: absolute;
+        top: 18px;
+        left: 64px;
+        z-index: 3;
+        line-height: 1.25;
+      }
+
+      /* body area */
+      .body {
+        flex: 1;
+        display: flex;
+        gap: 48px;
+        align-items: flex-start;
+        overflow: auto;
+      }
+      .body.text-only {
+        flex-direction: column;
+        justify-content: flex-start;
+      }
+
+      .bullets {
+        flex: 1;
+        min-width: 0;
+      }
+      .bullets li {
+        list-style: none;
+        margin-bottom: 12px;
+        font-size: clamp(14px, 1.5vw, 18px);
+        line-height: 1.6;
+        color: var(--text);
+      }
+      .bullets li.level-1 {
+        margin-left: 32px;
+        font-size: clamp(12px, 1.2vw, 15px);
+        color: var(--gray);
+        margin-bottom: 6px;
+      }
+      .bullets li .lead {
+        font-weight: bold;
+        margin-right: 4px;
+      }
+      .bullets li .lead.zhushe {
+        color: var(--zhushe);
+      }
+      .bullets li .lead.qingbi {
+        color: var(--qingbi);
+      }
+      .bullets li .lead.shenqing {
+        color: var(--shenqing);
+      }
+      .bullets li .lead.gray {
+        color: var(--gray);
+      }
+
+      /* bullets marker */
+      .bullets li::before {
+        content: "● ";
+        color: var(--qingbi);
+        font-weight: bold;
+        font-size: 0.85em;
+      }
+      .bullets li.level-1::before {
+        content: "    – ";
+        font-weight: normal;
+        color: var(--qingbi);
+      }
+
+      /* image right column */
+      .img-col {
+        width: 42%;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .img-col img {
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 6px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        object-fit: contain;
+      }
+      .img-col .caption {
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--gray);
+        text-align: center;
+      }
+      .img-col .placeholder {
+        width: 100%;
+        aspect-ratio: 16/9;
+        background: var(--bg);
+        border: 2px dashed #ccc;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--gray);
+        font-size: 14px;
+        text-align: center;
+      }
+
+      /* footer */
+      .footer {
+        position: absolute;
+        bottom: 16px;
+        left: 64px;
+        right: 64px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 3;
+      }
+      .footer .tagline {
+        font-size: 11px;
+        color: var(--gray);
+      }
+      .footer .page {
+        font-size: 12px;
+        color: var(--gray);
+        font-weight: bold;
+      }
+
+      /* navigation hint */
+      #nav-hint {
+        position: fixed;
+        bottom: 12px;
+        right: 20px;
+        z-index: 100;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.4);
+      }
+      #nav-hint kbd {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.15);
+        font-family: inherit;
+        font-size: 11px;
+      }
+
+      /* deck divider */
+      .deck-divider {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: var(--shenqing);
+        color: var(--white);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+      }
+      .deck-divider.active {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .deck-divider h2 {
+        font-size: 42px;
+        margin-bottom: 12px;
+      }
+      .deck-divider p {
+        font-size: 18px;
+        opacity: 0.7;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Top bar -->
+    <div id="bar">
+      <span class="brand">浙水智能体 hydroZagent</span>
+      <button class="active" onclick="goDeck(0)">A · 领导汇报</button>
+      <button onclick="goDeck(1)">B · 技术评审</button>
+      <button onclick="goDeck(2)">C · 外部路演</button>
+      <button onclick="goDeck(3)">D · 内部对齐</button>
+    </div>
+
+    <!-- Slide Stage -->
+    <div id="stage">
+      <div id="slideshow">
+        <!-- ======================== Deck A ======================== -->
+        <div class="deck-divider" data-deck="0">
+          <h2>A · 领导汇报版</h2>
+          <p>为什么要做 · 产品形态与进展</p>
+        </div>
+
+        <div class="slide active" data-deck="0" data-index="0">
+          <div class="title">为什么要做浙水智能体</div>
+          <div class="body text-only">
+            <ul class="bullets">
+              <li>
+                <span class="lead zhushe">痛点一：</span>水利单位内网下通用 AI
+                不可用——数据出不了内网，专业能力进不来
+              </li>
+              <li>
+                <span class="lead zhushe">痛点二：</span
+                >水利专业分析、办公文档、数据可视化、知识检索、系统运营散落多工具，割裂低效
+              </li>
+              <li>
+                <span class="lead qingbi">定位：</span
+                >面向水利单位内网的综合业务智能体；以成熟开源 coding
+                agent（pi）为底座，把"写代码"扩展到防汛日报、水情分析、合规文档、系统巡检等全日常工作面
+              </li>
+              <li>
+                <span class="lead qingbi">价值：</span
+                >数据不出内网、安全可控；一个 agent
+                覆盖六大业务面，降本提效；基于成熟开源底座，自主可控可演进；契合单位现有工作流
+              </li>
+            </ul>
+          </div>
+          <div class="footer">
+            <span class="tagline"
+              >浙水智能体 hydroZagent · AI 赋能水利 · 智慧守护江河</span
+            ><span class="page">A1</span>
+          </div>
+        </div>
+
+        <div class="slide" data-deck="0" data-index="1">
+          <div class="title">产品形态与进展</div>
+          <div class="body text-only">
+            <ul class="bullets">
+              <li>
+                <span class="lead qingbi">形态：</span>Electron 桌面工作台 +
+                局域网 Web
+                共享；用户拿到的是"浙水智能体"一个产品，不是多个工程拼装
+              </li>
+              <li>
+                <span class="lead qingbi">架构四层：</span>桌面工作台 → Agent
+                运行时(pi) → 模型与协议 → 服务能力
+              </li>
+              <li class="level-1">
+                <span
+                  >入口 apps/desktop · 运行时 packages/coding-agent · 协议
+                  ai/agent/protocol · 服务 server/client</span
+                >
+              </li>
+              <li>
+                <span class="lead qingbi">能力总览：</span>Coding 代码 · 水利 ·
+                文档 · 数据 · 运营 · 知识 六大类
+              </li>
+              <li>
+                <span class="lead shenqing">当前进展：</span
+                >统一品牌与青碧朱砂视觉 ✓ · 水文/水情/雨情/防汛词条 ✓ · 内网 Web
+                共享 ✓ · 开发模式可用 ✓
+              </li>
+              <li>
+                <span class="lead shenqing">下一步：</span>水利技能包深化 ·
+                文档模板与渲染检查 · 正式发行版打包(desktop:dist)
+              </li>
+            </ul>
+          </div>
+          <div class="footer">
+            <span class="tagline"
+              >浙水智能体 hydroZagent · AI 赋能水利 · 智慧守护江河</span
+            ><span class="page">A2</span>
+          </div>
+        </div>
+
+        <!-- ======================== Deck B ======================== -->
+        <div class="deck-divider" data-deck="1">
+          <h2>B · 技术评审版</h2>
+          <p>架构 · 工程纪律</p>
+        </div>
+
+        <div class="slide" data-deck="1" data-index="0">
+          <div class="title">以 pi 为底座的水利内网综合智能体</div>
+          <div class="body text-only">
+            <ul class="bullets">
+              <li>
+                <span class="lead qingbi">idea：</span
+                >把能"写代码、调用工具、跑会话"的成熟 agent
+                运行时(pi)搬进水利单位内网，并从编码扩展到六大业务面
+              </li>
+              <li>
+                <span class="lead qingbi">为何选 pi：</span>成熟开源 coding
+                agent
+                运行时——工具调用/会话执行/技能扩展/LSP/测试，不重复造轮子，可控演进
+              </li>
+              <li>
+                <span class="lead zhushe"
+                  >六大任务类别自动路由（架构创新点）：</span
+                >Coding 代码 · Hydro 水利 · Document 文档 · Data 数据 ·
+                Operations 运营 · Knowledge 知识
+              </li>
+              <li class="level-1">
+                <span
+                  >跨类别可叠加：如"根据水情数据生成防汛日报"= Hydro + Data +
+                  Document</span
+                >
+              </li>
+              <li class="level-1">
+                <span>置信度不足时集中问 1–3 个关键问题，不猜后动手</span>
+              </li>
+            </ul>
+          </div>
+          <div class="footer">
+            <span class="tagline"
+              >浙水智能体 hydroZagent · AI 赋能水利 · 智慧守护江河</span
+            ><span class="page">B1</span>
+          </div>
+        </div>
+
+        <div class="slide" data-deck="1" data-index="1">
+          <div class="title">架构与工程纪律</div>
+          <div class="body text-only">
+            <ul class="bullets">
+              <li><span class="lead qingbi">产品架构（四层）：</span></li>
+              <li class="level-1">
+                <span
+                  >用户入口 apps/desktop —— Electron
+                  桌面工作台、项目会话管理、水利品牌 UI、内网 Web 服务</span
+                >
+              </li>
+              <li class="level-1">
+                <span
+                  >Agent 运行时 packages/coding-agent ——
+                  工具调用、会话执行、技能与扩展</span
+                >
+              </li>
+              <li class="level-1">
+                <span>模型与协议 packages/ai · agent · protocol</span>
+              </li>
+              <li class="level-1">
+                <span>服务能力 packages/server · client</span>
+              </li>
+              <li>
+                <span class="lead zhushe">验收纪律：</span
+                >有修改就要有验证（代码→LSP/测试、UI→截图、文档→渲染检查、数据→合理性）；不伪成功，最多自动补
+                2 轮，仍失败则交付未完成项+原因
+              </li>
+              <li>
+                <span class="lead zhushe">水利专项：</span>标准术语与单位（流量
+                m³/s、水位注明高程系）；引用必须注明来源与版本；高风险结论标注"建议专业人员复核"
+              </li>
+              <li>
+                <span class="lead qingbi">现状：</span>开发模式可用 npm run
+                desktop:dev；desktop:dist 可打包含 Agent 运行时的发行版
+              </li>
+            </ul>
+          </div>
+          <div class="footer">
+            <span class="tagline"
+              >浙水智能体 hydroZagent · AI 赋能水利 · 智慧守护江河</span
+            ><span class="page">B2</span>
+          </div>
+        </div>
+
+        <!-- ======================== Deck C ======================== -->
+        <div class="deck-divider" data-deck="2">
+          <h2>C · 外部路演版</h2>
+          <p>愿景 · 六大能力 + demo</p>
+        </div>
+
+        <div class="slide" data-deck="2" data-index="0">
+          <div class="title">AI 赋能水利 · 智慧守护江河</div>
+          <div class="body text-only">
+            <ul class="bullets">
+              <li>
+                <span class="lead qingbi">定位：</span
+                >面向水利单位内网的综合业务智能体
+              </li>
+              <li>
+                <span class="lead zhushe">差异化：</span>同一个
+                agent，既能写代码上线，也能写防汛日报、做水情分析、出合规文档、巡检系统——把
+                agent 能力下沉到水利单位全日常工作面
+              </li>
+              <li>
+                <span class="lead qingbi">为什么是现在：</span>成熟开源 coding
+                agent(pi)已可用；水利数字化与内网安全并举；单位对"能干活、不出内网"的
+                AI 需求明确
+              </li>
+              <li>
+                <span class="lead gray">不做什么：</span>不依赖外网通用
+                AI；不把数据送出内网；不做单一割裂工具
+              </li>
+            </ul>
+          </div>
+          <div class="footer">
+            <span class="tagline"
+              >浙水智能体 hydroZagent · AI 赋能水利 · 智慧守护江河</span
+            ><span class="page">C1</span>
+          </div>
+        </div>
+
+        <div class="slide" data-deck="2" data-index="1">
+          <div class="title">六大能力 + demo + 路线图</div>
+          <div class="body">
+            <div class="bullets" style="flex: 1">
+              <ul>
+                <li><span class="lead zhushe">六大能力矩阵：</span></li>
+                <li class="level-1">
+                  <span>Coding 代码 · Hydro 水利专业分析与报告</span>
+                </li>
+                <li class="level-1">
+                  <span>Document 文档生产 · Data 数据分析与可视化</span>
+                </li>
+                <li class="level-1">
+                  <span>Operations 系统运营辅助 · Knowledge 内网知识检索</span>
+                </li>
+                <li><span class="lead qingbi">路线图 / 合作切入点：</span></li>
+                <li class="level-1">
+                  <span>水利技能包（水文/防汛/调度/预警）共建</span>
+                </li>
+                <li class="level-1"><span>单位文档模板与公文规范接入</span></li>
+                <li class="level-1"><span>内网知识库与数据源对接</span></li>
+              </ul>
+            </div>
+            <div class="img-col">
+              <img
+                src="../../../apps/desktop/hydro-ui-smoke.png"
+                alt="桌面工作台 demo"
+                onerror="
+                  this.remove();
+                  this.parentElement.innerHTML =
+                    '<div class=placeholder>桌面工作台截图<br>（文件不存在）</div>';
+                "
+              />
+              <div class="caption">桌面工作台 demo</div>
+            </div>
+          </div>
+          <div class="footer">
+            <span class="tagline"
+              >浙水智能体 hydroZagent · AI 赋能水利 · 智慧守护江河</span
+            ><span class="page">C2</span>
+          </div>
+        </div>
+
+        <!-- ======================== Deck D ======================== -->
+        <div class="deck-divider" data-deck="3">
+          <h2>D · 内部对齐版</h2>
+          <p>目标 · 现状与下一步</p>
+        </div>
+
+        <div class="slide" data-deck="3" data-index="0">
+          <div class="title">我们要做成什么</div>
+          <div class="body text-only">
+            <ul class="bullets">
+              <li>
+                <span class="lead qingbi">定位：</span
+                >面向水利单位内网的综合业务智能体；coding
+                是重要能力之一，同时承担水利专业、办公生产、数据分析、系统运营、知识服务
+              </li>
+              <li><span class="lead zhushe">目标边界：</span></li>
+              <li class="level-1">
+                <span
+                  >做：编码能力接近成熟 coding
+                  agent；在水利专业、内网集成、文档生产、单位日常工作上形成差异化</span
+                >
+              </li>
+              <li class="level-1">
+                <span
+                  >不做：DSH、桌宠不进入产品入口与默认运行时；不依赖外网通用
+                  AI</span
+                >
+              </li>
+              <li>
+                <span class="lead qingbi">架构一句：</span>桌面工作台
+                apps/desktop → RPC 子进程 → packages/coding-agent(pi 运行时) →
+                ai/agent/protocol
+              </li>
+              <li>
+                <span class="lead qingbi">产品边界：</span
+                >用户拿到"浙水智能体"一个产品；完整发行物必须经 desktop:dist
+                生成
+              </li>
+            </ul>
+          </div>
+          <div class="footer">
+            <span class="tagline"
+              >浙水智能体 hydroZagent · AI 赋能水利 · 智慧守护江河</span
+            ><span class="page">D1</span>
+          </div>
+        </div>
+
+        <div class="slide" data-deck="3" data-index="1">
+          <div class="title">现状 · 分工 · 下一步</div>
+          <div class="body text-only">
+            <ul class="bullets">
+              <li><span class="lead shenqing">现状（完成度）：</span></li>
+              <li class="level-1">
+                <span>品牌：统一名称/徽标/启动页/青碧朱砂主题 ✓</span>
+              </li>
+              <li class="level-1">
+                <span
+                  >水利适配：水文/水情/雨情/流量/水位/水库/河网/防汛/预警 词条
+                  ✓</span
+                >
+              </li>
+              <li class="level-1">
+                <span>内网 Web 共享（核心能力不回退）✓</span>
+              </li>
+              <li class="level-1">
+                <span>开发模式可用；Pi Agent 运行链路默认启用 ✓</span>
+              </li>
+              <li>
+                <span class="lead qingbi">分工（粗）：</span>Agent
+                核心(packages) / 桌面工作台(apps/desktop) / 水利技能与领域服务
+              </li>
+              <li>
+                <span class="lead zhushe">下一步优先级：</span>水利技能包深化 →
+                文档模板与渲染检查 → 正式发行版打包
+              </li>
+              <li>
+                <span class="lead gray">风险 / 待办：</span
+                >水利知识源与数据源对接；发行版跨平台打包验证
+              </li>
+            </ul>
+          </div>
+          <div class="footer">
+            <span class="tagline"
+              >浙水智能体 hydroZagent · AI 赋能水利 · 智慧守护江河</span
+            ><span class="page">D2</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="nav-hint">
+      <kbd>←</kbd> <kbd>→</kbd> 切换页 &nbsp; <kbd>1-4</kbd> 切换版
+    </div>
+
+    <script>
+      (function () {
+        const DECKS = [
+          document.querySelectorAll('.deck-divider[data-deck="0"]'),
+          document.querySelectorAll('.deck-divider[data-deck="1"]'),
+          document.querySelectorAll('.deck-divider[data-deck="2"]'),
+          document.querySelectorAll('.deck-divider[data-deck="3"]'),
+        ];
+        // Each deck: divider + 2 slides
+        const SLIDES = [];
+        for (let d = 0; d < 4; d++) {
+          const deck = DECKS[d];
+          let current = deck[0];
+          let slideIdx = 0;
+          // find subsequent slides before next deck divider
+          let sib = deck[0].nextElementSibling;
+          while (sib) {
+            if (sib.classList.contains("deck-divider")) break;
+            if (sib.classList.contains("slide")) {
+              // assign slideIdx (reset per deck)
+              slideIdx = 0;
+            }
+            sib = sib.nextElementSibling;
+          }
+          // collect slides after this divider
+          const slides = [];
+          let s = deck[0].nextElementSibling;
+          while (s && !s.classList.contains("deck-divider")) {
+            if (s.classList.contains("slide")) slides.push(s);
+            s = s.nextElementSibling;
+          }
+          SLIDES[d] = slides;
+        }
+
+        let currentDeck = 0;
+        let currentSlide = 0;
+
+        function showSlide(deck, idx) {
+          // hide all
+          document
+            .querySelectorAll(".deck-divider, .slide")
+            .forEach((el) => el.classList.remove("active"));
+          // show deck divider first
+          DECKS[deck][0].classList.add("active");
+          // then the specific slide
+          DECKS[deck][0].classList.add("active");
+          // show divider + slide (divider shows first, then slide fades in)
+          const divider = DECKS[deck][0];
+          const slide = SLIDES[deck][idx];
+          // We want: divider visible → slide visible. Use a quick sequence.
+          // Actually, let's show both: divider as background, slide on top.
+          // Better approach: only show slide, no divider. Simpler.
+          // Redesign: skip divider, just show slides. Deck switcher jumps to first slide of that deck.
+          slide.classList.add("active");
+          divider.classList.remove("active");
+        }
+
+        function showDeck(idx) {
+          currentDeck = idx;
+          currentSlide = 0;
+          showSlide(idx, 0);
+          document.querySelectorAll("#bar button").forEach((b, i) => {
+            b.classList.toggle("active", i === idx);
+          });
+        }
+
+        window.goDeck = showDeck;
+
+        // keyboard nav
+        document.addEventListener("keydown", (e) => {
+          if (
+            e.key === "ArrowRight" ||
+            e.key === "ArrowDown" ||
+            e.key === " "
+          ) {
+            e.preventDefault();
+            const slides = SLIDES[currentDeck];
+            if (slides.length > currentSlide + 1) {
+              currentSlide++;
+              showSlide(currentDeck, currentSlide);
+            }
+          } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+            e.preventDefault();
+            if (currentSlide > 0) {
+              currentSlide--;
+              showSlide(currentDeck, currentSlide);
+            }
+          } else if (e.key >= "1" && e.key <= "4") {
+            showDeck(parseInt(e.key) - 1);
+          }
+        });
+
+        // init
+        showDeck(0);
+      })();
+    </script>
+  </body>
+</html>
