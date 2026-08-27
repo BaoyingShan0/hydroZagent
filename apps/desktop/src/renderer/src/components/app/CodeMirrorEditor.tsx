@@ -194,8 +194,22 @@ export const CodeMirrorEditor = memo(function CodeMirrorEditor({
 	// 外部 value 同步：只在文档确实不同时替换（防止覆盖用户输入、防止 onChange 回环）
 	useEffect(() => {
 		const view = viewRef.current;
-		if (!view || view.state.doc.toString() === value) return;
-		view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: value } });
+		// onChange 的父层回声已经由 updateListener 记录，禁止再次全文替换；否则光标和选区会重置。
+		if (!view || lastValueRef.current === value) return;
+		if (view.state.doc.toString() === value) {
+			lastValueRef.current = value;
+			return;
+		}
+		// 真正的外部更新（切文件/重新加载）仍保留可用的光标与选区位置，而不是跳到首行。
+		const main = view.state.selection.main;
+		view.dispatch({
+			changes: { from: 0, to: view.state.doc.length, insert: value },
+			selection: {
+				anchor: Math.min(main.anchor, value.length),
+				head: Math.min(main.head, value.length),
+			},
+		});
+		lastValueRef.current = value;
 	}, [value]);
 
 	const hasSelection = Boolean(selectionMenu && selectionMenu.from !== selectionMenu.to);

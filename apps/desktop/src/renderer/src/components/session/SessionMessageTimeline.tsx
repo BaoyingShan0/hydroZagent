@@ -2,7 +2,7 @@ import { useAtomValue } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { ComponentProps, ReactNode, RefObject } from "react";
+import type { ComponentProps, MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
 import type { ChatMessage, ImageContent } from "../../../../shared/types";
 import { MarkdownStream } from "./MarkdownStream";
 import { Button } from "../ui-shadcn/button";
@@ -32,7 +32,7 @@ import {
   sessionRuntimeBySessionIdAtomFamily,
   sessionSendStateByIdAtom,
 } from "../../atoms";
-import { writeClipboardImage } from "../../utils/clipboard";
+import { writeClipboard, writeClipboardImage } from "../../utils/clipboard";
 import { useTimelineSelection } from "../../hooks/useTimelineSelection";
 import { SelectionToolbar } from "./timeline/SelectionToolbar";
 import {
@@ -44,7 +44,7 @@ import {
 } from "../../hooks/useSessionTimelineController";
 import { t } from "../../i18n";
 import { cn } from "../../lib/utils";
-import { Loader2 } from "lucide-react";
+import { Copy, Loader2 } from "lucide-react";
 import { showNotice } from "../../utils/notice";
 import {
   composeFailureNotice,
@@ -64,9 +64,17 @@ import {
   TIMELINE_SCROLLED_MAX_ITEMS,
   countAgentRunItems,
 } from "./timeline/turnRenderWindow";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuShortcut,
+  DropdownMenuTrigger,
+} from "../ui-shadcn/dropdown-menu";
 
 type TurnRowProps = ComponentProps<typeof TurnRow>;
 type UserBubbleProps = ComponentProps<typeof UserBubble>;
+type TimelineCopyMenu = { x: number; y: number; text: string };
 
 /** 一轮结束后、用户无操作的自动收起等待时间。 */
 const TURN_SETTLE_IDLE_COLLAPSE_MS = 1500;
@@ -226,6 +234,7 @@ export function SessionMessageTimeline(props: SessionMessageTimelineProps) {
   // 只对「时间线尾部新增」的消息播放一次入场动画：历史加载/分页前插不算，
   // 避免整屏消息同时闪烁。乐观上屏的用户消息与流式替换后的权威消息都会触发。
   const [multiSelectOpen, setMultiSelectOpen] = useState(false);
+  const [timelineCopyMenu, setTimelineCopyMenu] = useState<TimelineCopyMenu | null>(null);
   const [freshMessageIds, setFreshMessageIds] = useState<ReadonlySet<string>>(() => new Set());
   const seenTailMessageIdRef = useRef<string | undefined>(undefined);
   const freshTimersRef = useRef<Map<string, number>>(new Map());
@@ -684,6 +693,38 @@ export function SessionMessageTimeline(props: SessionMessageTimelineProps) {
       activeMessages.at(-1)?.role !== "assistant",
   );
 
+  const handleTimelineContextMenu = useCallback((event: ReactMouseEvent<HTMLElement>) => {
+    const target = event.target instanceof Element ? event.target : null;
+    // 编辑控件保留原生菜单；时间线只接管普通消息、思考与工具输出文本。
+    if (target?.closest("input, textarea, [contenteditable='true'], .cm-editor")) return;
+
+    event.preventDefault();
+    const selection = window.getSelection();
+    const root = timelineRef.current;
+    const selectionInsideTimeline = Boolean(
+      root &&
+      selection &&
+      !selection.isCollapsed &&
+      selection.anchorNode &&
+      selection.focusNode &&
+      root.contains(selection.anchorNode) &&
+      root.contains(selection.focusNode),
+    );
+    setTimelineCopyMenu({
+      x: event.clientX,
+      y: event.clientY,
+      text: selectionInsideTimeline ? selection?.toString() ?? "" : "",
+    });
+  }, [timelineRef]);
+
+  const copyTimelineSelection = useCallback(() => {
+    const text = timelineCopyMenu?.text;
+    if (!text) return;
+    void writeClipboard(text);
+    props.onToast(t("copy.success"));
+    setTimelineCopyMenu(null);
+  }, [props, timelineCopyMenu]);
+
   async function copySelectedMessages(
     selectedIds: Set<string>,
     kind: "text" | "markdown" | "image",
@@ -795,6 +836,7 @@ export function SessionMessageTimeline(props: SessionMessageTimelineProps) {
       viewportProps={{
         // 会话切换滚动位置保持：滚动时维护 per-session 锚点（rAF 合并，不触发渲染）
         onScroll: controller.handleTimelineScroll,
+        onContextMenu: handleTimelineContextMenu,
       }}
     >
       {(turnWindowActive || (hasMoreMessages && canLoadMoreMessages)) && (
@@ -1050,6 +1092,40 @@ export function SessionMessageTimeline(props: SessionMessageTimelineProps) {
           sessionId={sessionId}
           onConsume={clearSelectionQuote}
         />
+      )}
+
+      {timelineCopyMenu && (
+        <DropdownMenu open onOpenChange={(open) => { if (!open) setTimelineCopyMenu(null); }}>
+          <DropdownMenuTrigger
+            aria-hidden
+            tabIndex={-1}
+            style={{
+              position: "fixed",
+              left: timelineCopyMenu.x,
+              top: timelineCopyMenu.y,
+              width: 0,
+              height: 0,
+              pointerEvents: "none",
+            }}
+          />
+          <DropdownMenuContent
+            align="start"
+            side="bottom"
+            className="min-w-32 border-border/70 bg-popover/95 p-0.5 shadow-sm"
+          >
+            <DropdownMenuItem
+              disabled={!timelineCopyMenu.text}
+              onSelect={copyTimelineSelection}
+              className="gap-1.5 px-2 py-1 text-xs text-muted-foreground"
+            >
+              <Copy className="size-3.5" />
+              {t("common.copy")}
+              <DropdownMenuShortcut className="ml-3 text-[10px] tracking-normal opacity-60">
+                Ctrl+C
+              </DropdownMenuShortcut>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
     </MessageScroller>
   );

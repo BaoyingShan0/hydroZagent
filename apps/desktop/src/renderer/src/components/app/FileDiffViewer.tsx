@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { t } from "../../i18n";
-import { ArrowLeft, Maximize, Minimize2, Rows2, SquareSplitHorizontal, X, Eye, FileCode, GitCompareArrows } from "lucide-react";
+import { ArrowLeft, Copy, Maximize, Minimize2, Paperclip, Rows2, SquareSplitHorizontal, TextSelect, X, Eye, FileCode, GitCompareArrows } from "lucide-react";
 import { Button } from "../ui-shadcn/button";
 import { Badge } from "../ui-shadcn/badge";
 import { cn } from "../../lib/utils";
@@ -15,11 +15,25 @@ const CodeDiffView = lazy(() =>
 	import("./CodeDiffView").then((m) => ({ default: m.CodeDiffView })),
 );
 import { formatFilePathRef } from "../session/composer/chips";
+import { writeClipboard } from "../../utils/clipboard";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "../ui-shadcn/dropdown-menu";
 
 import { isBinaryExtension, isImageFile, isPdfFile } from "../../utils/isTextFile";
 import { getFileIconColor, getFileIconSeti } from "../../fileIcons";
 
 type ViewMode = "view" | "diff";
+
+type PreviewSelectionMenu = {
+	x: number;
+	y: number;
+	text: string;
+};
 
 export function FileDiffViewer(props: {
 	filePath: string;
@@ -62,6 +76,12 @@ export function FileDiffViewer(props: {
 }) {
 	const maxFileSize = (props.maxFileSizeMB ?? 5) * 1024 * 1024;
 	const [content, setContent] = useState("");
+	// CodeMirror onChange 必须同步写入 ref：自动保存 timer 创建于当前 render，若从闭包读取
+	// content 会永远落后一拍，旧值回灌后触发编辑器全文替换，光标与选区随之跳到首行。
+	const latestContentRef = useRef("");
+	const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	// 最近一次落盘内容快照：内容未变时跳过保存，避免重复写盘
+	const lastSavedRef = useRef("");
 	// 差异模式左侧展示的原始内容：优先使用会话缓存（originalContent），
 	// 没有则从 Git HEAD 读取。新增/未跟踪文件为空字符串。
 	const [original, setOriginal] = useState("");
@@ -74,6 +94,8 @@ export function FileDiffViewer(props: {
 	// 二进制预览（图片/PDF）的 Blob URL：切换文件/卸载时 revoke，防止内存泄漏
 	const [mediaUrl, setMediaUrl] = useState<string | null>(null);
 	const mediaUrlRef = useRef<string | null>(null);
+	const previewContentRef = useRef<HTMLDivElement | null>(null);
+	const [previewSelectionMenu, setPreviewSelectionMenu] = useState<PreviewSelectionMenu | null>(null);
 
 	const isDiffMode = props.mode === "diff";
 	const fileName = props.filePath.split(/[/\\]/).pop() ?? props.filePath;
@@ -146,6 +168,7 @@ export function FileDiffViewer(props: {
 						setLoading(false);
 						return;
 					}
+					latestContentRef.current = result;
 					setContent(result);
 					// 自动保存基准快照：加载完成即视为「已落盘」状态，避免打开后无改动就触发写盘
 					lastSavedRef.current = result;
@@ -202,35 +225,28 @@ export function FileDiffViewer(props: {
 		}
 	}
 
-	// 从当前内容 state 取最新值（编辑器 onChange 已实时同步；CM6 无 Monaco 的实例取值路径）
-	const getLatestContent = useCallback(() => content, [content]);
-
 	// 自动保存：编辑停止 500ms 后静默落盘（仅 allowSave 的文件），Ctrl+S 立即保存并取消挂起的自动保存。
-	const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	// 最近一次落盘内容快照：内容未变时跳过保存，避免重复写盘
-	const lastSavedRef = useRef("");
-
 	const saveNow = useCallback(async () => {
 		if (saveTimerRef.current) {
 			clearTimeout(saveTimerRef.current);
 			saveTimerRef.current = null;
 		}
 		if (!props.saveContent) return;
-		const latest = getLatestContent();
+		const latest = latestContentRef.current;
 		if (latest === lastSavedRef.current) return;
 		setSaving(true);
 		try {
 			await props.saveContent(props.filePath, latest);
 			lastSavedRef.current = latest;
-			setContent(latest);
-			setDirty(false);
+			// 保存期间可能继续输入；只有 ref 仍等于本次快照时才清除 dirty。
+			if (latestContentRef.current === latest) setDirty(false);
 		} catch (e) {
 			// 保存失败保留 dirty，用户可继续编辑后由下一次自动保存/Ctrl+S 重试
 			setError(e instanceof Error ? e.message : String(e));
 		} finally {
 			setSaving(false);
 		}
-	}, [getLatestContent, props.saveContent, props.filePath]);
+	}, [props.saveContent, props.filePath]);
 
 	const scheduleAutoSave = useCallback(() => {
 		if (!props.saveContent) return;
@@ -269,6 +285,8 @@ export function FileDiffViewer(props: {
 	}, []);
 
 	const handleEditorChange = useCallback((value: string) => {
+		// 必须先更新 ref 再启动 timer，确保 timer 即使来自上一帧闭包也读取到本次输入。
+		latestContentRef.current = value;
 		setContent(value);
 		setDirty(true);
 		scheduleAutoSave();
@@ -281,6 +299,50 @@ export function FileDiffViewer(props: {
 		const ref = `${formatFilePathRef(props.filePath)}:${range}`;
 		window.dispatchEvent(new CustomEvent("composer-attach-refs", { detail: { refs: [ref] } }));
 	}, [props.filePath]);
+
+	const handleAttachPreviewSelection = useCallback((selectedText: string) => {
+		const text = selectedText.trim();
+		if (!text) return;
+		// 预览 DOM 已移除 Markdown 标记，先按可见文本回查源码；能定位时继续使用
+		// @path:start-end 精确引用，无法稳定回查时退化为整个文件引用。
+		const offset = content.indexOf(text);
+		if (offset < 0) {
+			window.dispatchEvent(new CustomEvent("composer-attach-refs", {
+				detail: { refs: [formatFilePathRef(props.filePath)] },
+			}));
+			return;
+		}
+		const startLine = content.slice(0, offset).split("\n").length;
+		const endLine = startLine + text.split("\n").length - 1;
+		handleAttachSelection(startLine, endLine);
+	}, [content, handleAttachSelection, props.filePath]);
+
+	const handlePreviewContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+		event.preventDefault();
+		const root = previewContentRef.current;
+		const selection = window.getSelection();
+		const selectionInsidePreview = Boolean(
+			root && selection && !selection.isCollapsed &&
+			selection.anchorNode && selection.focusNode &&
+			root.contains(selection.anchorNode) && root.contains(selection.focusNode),
+		);
+		setPreviewSelectionMenu({
+			x: event.clientX,
+			y: event.clientY,
+			text: selectionInsidePreview ? selection?.toString() ?? "" : "",
+		});
+	}, []);
+
+	const selectAllPreview = useCallback(() => {
+		const root = previewContentRef.current;
+		if (!root) return;
+		const range = document.createRange();
+		range.selectNodeContents(root);
+		const selection = window.getSelection();
+		selection?.removeAllRanges();
+		selection?.addRange(range);
+		setPreviewSelectionMenu(null);
+	}, []);
 
 	const language = ext;
 	const isReadOnlyPreview = preview || isImage || isPdf;
@@ -480,7 +542,11 @@ export function FileDiffViewer(props: {
 						   排版复用会话正文的 .markdown-body 体系，预览专属增量（阅读宽度/任务列表/kbd 等）
 						   由 markdown-preview-chrome utility 提供（tailwind.css @utility，不再自建 parallel 样式）。 */}
 						{!isDiffMode && preview && isMarkdown && (
-							<div className="markdown-body markdown-preview-chrome h-full overflow-y-auto px-6 py-6 text-body text-text-primary font-sans">
+							<div
+								ref={previewContentRef}
+								className="markdown-body markdown-preview-chrome h-full cursor-text select-text overflow-y-auto px-6 py-6 text-body text-text-primary font-sans"
+								onContextMenu={handlePreviewContextMenu}
+							>
 								<MarkdownStream
 									text={content}
 									onOpenExternal={() => undefined}
@@ -538,6 +604,49 @@ export function FileDiffViewer(props: {
 					</>
 				)}
 			</div>
+			{previewSelectionMenu && (
+				<DropdownMenu open onOpenChange={(open) => { if (!open) setPreviewSelectionMenu(null); }}>
+					<DropdownMenuTrigger
+						aria-hidden
+						tabIndex={-1}
+						style={{
+							position: "fixed",
+							left: previewSelectionMenu.x,
+							top: previewSelectionMenu.y,
+							width: 0,
+							height: 0,
+							pointerEvents: "none",
+						}}
+					/>
+					<DropdownMenuContent align="start" side="bottom" className="min-w-44">
+						<DropdownMenuItem
+							disabled={!previewSelectionMenu.text}
+							onSelect={() => {
+								void writeClipboard(previewSelectionMenu.text);
+								setPreviewSelectionMenu(null);
+							}}
+						>
+							<Copy />
+							{t("common.copy")}
+						</DropdownMenuItem>
+						<DropdownMenuItem onSelect={selectAllPreview}>
+							<TextSelect />
+							{t("common.selectAll")}
+						</DropdownMenuItem>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							disabled={!previewSelectionMenu.text}
+							onSelect={() => {
+								handleAttachPreviewSelection(previewSelectionMenu.text);
+								setPreviewSelectionMenu(null);
+							}}
+						>
+							<Paperclip />
+							{t("app.quoteAddToPrompt")}
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
+			)}
 		</>
 	);
 

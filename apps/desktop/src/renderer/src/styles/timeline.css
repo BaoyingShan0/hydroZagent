@@ -1307,6 +1307,14 @@ body.ask-dialog-open .ask-question-card.pending {
   min-height: 100%;
   flex-direction: column;
 }
+/* 会话内容默认是可复制的阅读材料：显式恢复文本选择，覆盖 Electron 拖拽区、
+ * 折叠 trigger 和第三方 Markdown 节点可能带入的 select-none。真正的表单控件
+ * 仍保留各自浏览器选择语义。 */
+.message-timeline [data-message-id],
+.message-timeline [data-message-id] :not(input):not(textarea) {
+  user-select: text;
+  -webkit-user-select: text;
+}
 .session-runtime-ui {
   position: relative;
   margin-top: auto;

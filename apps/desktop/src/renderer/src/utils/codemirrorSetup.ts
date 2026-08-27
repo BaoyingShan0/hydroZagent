@@ -115,10 +115,18 @@ const editorThemeSpec = {
   },
   "&.cm-focused": { outline: "none" },
   ".cm-scroller": { fontFamily: "var(--font-family-mono)", lineHeight: "1.6" },
-  ".cm-content": { caretColor: "var(--color-accent)", padding: "12px" },
+  // 明确允许鼠标拖拽/双击选词；避免外层工作台的 select-none 规则或浏览器差异吞掉选择能力。
+  ".cm-content, .cm-line": {
+    caretColor: "var(--color-accent)",
+    cursor: "text",
+    userSelect: "text",
+    WebkitUserSelect: "text",
+  },
+  ".cm-content": { padding: "12px" },
   ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--color-accent)" },
   "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, ::selection": {
-    backgroundColor: "var(--color-accent-soft)",
+    // 选区必须在明暗主题下都清楚可见；CodeMirror 使用绘制层而不是浏览器原生 ::selection。
+    backgroundColor: "color-mix(in srgb, var(--color-accent) 30%, transparent)",
   },
   ".cm-gutters": { backgroundColor: "transparent", color: "var(--color-text-tertiary)", border: "none", borderRight: "1px solid var(--color-border-subtle)", paddingRight: "2px" },
   ".cm-activeLine": { backgroundColor: "var(--color-bg-active)" },

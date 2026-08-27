@@ -25,6 +25,11 @@ test("FileDiffViewer: debounced auto-save with Ctrl+S immediate save", () => {
   assert.match(viewer, /setTimeout\(\(\) => \{\n\s*saveTimerRef\.current = null;/);
   assert.match(viewer, /500\);/);
   assert.match(viewer, /lastSavedRef\.current/);
+  // 回归：onChange 同步更新 ref，timer/saveNow 只能从 ref 读取最新文本，禁止旧 content 闭包回灌。
+  assert.match(viewer, /latestContentRef\.current = value;\s*setContent\(value\)/);
+  assert.match(viewer, /const latest = latestContentRef\.current/);
+  assert.doesNotMatch(viewer, /const getLatestContent = useCallback\(\(\) => content/);
+  assert.doesNotMatch(viewer, /setContent\(latest\)/);
   assert.match(viewer, /if \(latest === lastSavedRef\.current\) return/);
   // 加载完成即建立「已落盘」基准，避免打开后无改动就写盘
   assert.match(viewer, /lastSavedRef\.current = result/);
@@ -41,6 +46,20 @@ test("editors bind Ctrl+/ comment toggle and JSON lint", () => {
   // JSON 语法错误即时提示（lintGutter + jsonParseLinter，仅 json/jsonc）
   assert.match(editor, /lintGutter\(\), linter\(jsonParseLinter\(\)\)/);
   assert.match(editor, /resolvedLanguage\.language\.name === "json"/);
+});
+
+test("CodeMirror preserves cursor and exposes visible mouse text selection", () => {
+  const editor = readFileSync("src/renderer/src/components/app/CodeMirrorEditor.tsx", "utf8");
+  const setup = readFileSync("src/renderer/src/utils/codemirrorSetup.ts", "utf8");
+  // 父层 onChange 回声不做全文替换；真正外部更新也按新文档长度保留 anchor/head。
+  assert.match(editor, /lastValueRef\.current === value/);
+  assert.match(editor, /anchor: Math\.min\(main\.anchor, value\.length\)/);
+  assert.match(editor, /head: Math\.min\(main\.head, value\.length\)/);
+  // 鼠标拖选、双击选词显式启用，并使用足够清晰的主题选区背景。
+  assert.match(setup, /"\.cm-content, \.cm-line"/);
+  assert.match(setup, /userSelect: "text"/);
+  assert.match(setup, /WebkitUserSelect: "text"/);
+  assert.match(setup, /color-mix\(in srgb, var\(--color-accent\) 30%, transparent\)/);
 });
 
 test("CodeMirror context menu exposes safe commands for editable and read-only modes", () => {
@@ -93,6 +112,31 @@ test("FileDiffViewer: markdown preview reuses .markdown-body + markdown-preview-
   assert.doesNotMatch(surfaces, /\.file-diff-preview/);
   // HTML 预览 iframe 改用 Tailwind 类，不再依赖 legacy 类
   assert.doesNotMatch(viewer, /className="file-diff-preview"/);
+});
+
+test("FileDiffViewer: markdown preview supports copy, select all, and quote", () => {
+  const viewer = readFileSync("src/renderer/src/components/app/FileDiffViewer.tsx", "utf8");
+  assert.match(viewer, /previewContentRef/);
+  assert.match(viewer, /onContextMenu=\{handlePreviewContextMenu\}/);
+  assert.match(viewer, /writeClipboard\(previewSelectionMenu\.text\)/);
+  assert.match(viewer, /range\.selectNodeContents\(root\)/);
+  assert.match(viewer, /handleAttachPreviewSelection/);
+  assert.match(viewer, /composer-attach-refs/);
+  assert.match(viewer, /app\.quoteAddToPrompt/);
+});
+
+test("agent timeline content is selectable", () => {
+  const surface = readFileSync("src/renderer/src/components/session/SurfaceComponents.tsx", "utf8");
+  const component = readFileSync("src/renderer/src/components/session/SessionMessageTimeline.tsx", "utf8");
+  const timeline = readFileSync("src/renderer/src/styles/timeline.css", "utf8");
+  assert.match(surface, /user-turn-text text-chat/);
+  assert.match(timeline, /\.message-timeline \[data-message-id\][\s\S]*?user-select: text/);
+  assert.match(component, /onContextMenu: handleTimelineContextMenu/);
+  assert.match(component, /root\.contains\(selection\.anchorNode\)/);
+  assert.match(component, /writeClipboard\(text\)/);
+  assert.match(component, /<Copy className="size-3\.5" \/>[\s\S]*?common\.copy[\s\S]*?Ctrl\+C/);
+  assert.match(component, /min-w-32[\s\S]*?text-xs text-muted-foreground/);
+  assert.match(component, /input, textarea, \[contenteditable='true'\], \.cm-editor/);
 });
 
 test("FileDiffViewer: image/PDF get inline preview via base64 Blob URL", () => {
