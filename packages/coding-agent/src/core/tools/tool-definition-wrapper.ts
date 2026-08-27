@@ -1,5 +1,21 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import type { ExtensionContext, ToolDefinition } from "../extensions/types.ts";
+import { normalizeToolArgs } from "./normalize-args.ts";
+
+/**
+ * Compose the schema-aware argument normalizer with the tool's own `prepareArguments`.
+ * The normalizer runs first (renaming foreign parameter spellings to canonical keys),
+ * then the tool's shim. Identity is preserved end-to-end when nothing changes, so the
+ * runtime's "arguments unchanged" fast path still holds.
+ */
+function composePrepareArguments(definition: ToolDefinition<any, any>): (args: unknown) => any {
+	const schema = definition.parameters;
+	const inner = definition.prepareArguments;
+	return (args: unknown) => {
+		const normalized = normalizeToolArgs(args, schema);
+		return inner ? inner(normalized) : normalized;
+	};
+}
 
 /** Wrap a ToolDefinition into an AgentTool for the core runtime. */
 export function wrapToolDefinition<TDetails = unknown>(
@@ -12,7 +28,7 @@ export function wrapToolDefinition<TDetails = unknown>(
 		description: definition.description,
 		parameters: definition.parameters,
 		constrainedSampling: definition.constrainedSampling,
-		prepareArguments: definition.prepareArguments,
+		prepareArguments: composePrepareArguments(definition),
 		executionMode: definition.executionMode,
 		execute: (toolCallId, params, signal, onUpdate, ctx?: ExtensionContext) =>
 			definition.execute(toolCallId, params, signal, onUpdate, ctx ?? (ctxFactory?.() as ExtensionContext)),

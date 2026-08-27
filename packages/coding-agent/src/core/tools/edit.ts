@@ -102,18 +102,44 @@ export interface EditToolOptions {
 	operations?: EditOperations;
 }
 
+/** Rename a foreign alias key to its canonical name, but only when the canonical slot is empty. */
+function remapAlias(
+	args: Record<string, unknown>,
+	ensureCopy: () => Record<string, unknown>,
+	alias: string,
+	canonical: string,
+): void {
+	if (!(alias in args) || canonical in args) return;
+	const copy = ensureCopy();
+	copy[canonical] = copy[alias];
+	delete copy[alias];
+}
+
 function prepareEditArguments(input: unknown): EditToolInput {
 	if (!input || typeof input !== "object") {
 		return input as EditToolInput;
 	}
 
-	const args = input as Record<string, unknown>;
+	// Copy-on-write: only clone `input` once a real change is needed, so already-canonical
+	// arguments are returned by reference (preserving the runtime's unchanged-args fast path).
+	let args = input as Record<string, unknown>;
+	const ensureCopy = (): Record<string, unknown> => {
+		if (args === input) args = { ...(input as Record<string, unknown>) };
+		return args;
+	};
+
+	// Accept foreign parameter spellings from other agents (e.g. Claude Code sends
+	// `file_path`/`old_string`/`new_string`). Map to canonical keys when the canonical
+	// slot is empty, so the legacy folding below can pick them up.
+	remapAlias(args, ensureCopy, "file_path", "path");
+	remapAlias(args, ensureCopy, "old_string", "oldText");
+	remapAlias(args, ensureCopy, "new_string", "newText");
 
 	// Some models (Opus 4.6, GLM-5.1) send edits as a JSON string instead of an array
 	if (typeof args.edits === "string") {
 		try {
 			const parsed = JSON.parse(args.edits);
-			if (Array.isArray(parsed)) args.edits = parsed;
+			if (Array.isArray(parsed)) ensureCopy().edits = parsed;
 		} catch {}
 	}
 

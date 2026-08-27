@@ -64,6 +64,29 @@ describe("edit tool prepareArguments", () => {
 		expect(prepared).toBe(input);
 	});
 
+	it("maps Claude Code vocabulary (file_path/old_string/new_string) to canonical edits", () => {
+		const definition = createEditToolDefinition(process.cwd());
+		const prepared = definition.prepareArguments!({
+			file_path: "file.txt",
+			old_string: "before",
+			new_string: "after",
+		});
+		expect(prepared).toEqual({
+			path: "file.txt",
+			edits: [{ oldText: "before", newText: "after" }],
+		});
+	});
+
+	it("does not overwrite an explicit path with file_path", () => {
+		const definition = createEditToolDefinition(process.cwd());
+		const prepared = definition.prepareArguments!({
+			path: "canonical.txt",
+			file_path: "alias.txt",
+			edits: [{ oldText: "a", newText: "b" }],
+		}) as { path: string };
+		expect(prepared.path).toBe("canonical.txt");
+	});
+
 	it("passes through non-object input unchanged", () => {
 		const definition = createEditToolDefinition(process.cwd());
 		expect(definition.prepareArguments!(null)).toBe(null);
