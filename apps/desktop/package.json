@@ -18,14 +18,14 @@
       "url": "https://github.com/1900EasonJin"
     }
   ],
-  "homepage": "https://github.com/BaoyingShan0/community-hydroagent#readme",
+  "homepage": "https://github.com/BaoyingShan0/hydroZagent#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/BaoyingShan0/community-hydroagent.git",
+    "url": "git+https://github.com/BaoyingShan0/hydroZagent.git",
     "directory": "apps/desktop"
   },
   "bugs": {
-    "url": "https://github.com/BaoyingShan0/community-hydroagent/issues"
+    "url": "https://github.com/BaoyingShan0/hydroZagent/issues"
   },
   "keywords": [
     "pi",

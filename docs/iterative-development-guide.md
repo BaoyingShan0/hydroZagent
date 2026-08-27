@@ -8,7 +8,7 @@
 
 ## 首次准备
 
-在 `community-hydroagent` 仓库根目录执行：
+在 `hydroZagent` 仓库根目录执行：
 
 ```bash
 npm install --ignore-scripts
@@ -144,7 +144,7 @@ Q:ommunity-hydroagent 这个项目，我想一边使用，在使用时发现问�
 
 A： 不需要先发布版本。你现在最适合采用“开发版常用、发现问题即修改”的迭代方式。
 首次准备：
-cd community-hydroagent
+cd hydroZagent
 npm install --ignore-scripts
 npm --prefix apps/desktop install --ignore-scripts
 npm run desktop:prepare

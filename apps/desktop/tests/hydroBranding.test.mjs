@@ -53,7 +53,7 @@ test("homepage and feedback links use the hydroZagent brand destinations", () =>
   assert.match(brandLinks, /https:\/\/www\.zihe\.zj\.cn\//);
   assert.match(
     brandLinks,
-    /https:\/\/github\.com\/BaoyingShan0\/community-hydroagent\//,
+    /https:\/\/github\.com\/BaoyingShan0\/hydroZagent\//,
   );
   assert.match(appSource, /openExternal\(HYDRO_INSTITUTE_HOMEPAGE_URL, true\)/);
   assert.match(browserPanel, /const DEFAULT_HOME = HYDRO_INSTITUTE_HOMEPAGE_URL/);

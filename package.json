@@ -1,5 +1,5 @@
 {
-	"name": "community-hydroagent",
+	"name": "hydrozagent",
 	"description": "浙水智能体 hydroZagent：水利行业 Agent 核心、桌面工作台与局域网协作入口。",
 	"private": true,
 	"type": "module",

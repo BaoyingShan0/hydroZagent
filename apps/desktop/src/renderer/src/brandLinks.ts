@@ -2,6 +2,6 @@
 export const HYDRO_INSTITUTE_HOMEPAGE_URL = "https://www.zihe.zj.cn/";
 
 export const HYDROZAGENT_REPOSITORY_URL =
-	"https://github.com/BaoyingShan0/community-hydroagent/";
+	"https://github.com/BaoyingShan0/hydroZagent/";
 
 export const HYDROZAGENT_NEW_ISSUE_URL = `${HYDROZAGENT_REPOSITORY_URL}issues/new`;

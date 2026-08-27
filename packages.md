@@ -1,6 +1,6 @@
 # 项目打包清单（Extensions & Skills）
 
-本文件记录 `community-hydroagent` 项目级 `.pi/settings.json` 中分发的 pi 包（extensions + skills），供水利工程师 clone 后"打开即用"。工程师信任项目后，pi 启动时自动按 `.pi/settings.json` 安装缺失包：npm 包装进 `.pi/npm/`，git 包克隆进 `.pi/git/`（两者均被 gitignore，不入库；只有 `.pi/settings.json` 入库）。
+本文件记录 `hydroZagent` 项目级 `.pi/settings.json` 中分发的 pi 包（extensions + skills），供水利工程师 clone 后"打开即用"。工程师信任项目后，pi 启动时自动按 `.pi/settings.json` 安装缺失包：npm 包装进 `.pi/npm/`，git 包克隆进 `.pi/git/`（两者均被 gitignore，不入库；只有 `.pi/settings.json` 入库）。
 
 统计：**32 个包**（31 npm + 1 git），提供约 **64 个 skills**；另含项目内置（不入 packages、直接入库）的 `dev-conventions`/`doc-convert`/`fortran`/`data-workflow` 四个 skill 与 `/qa`/`/doc`/`/code`/`/data` 四个 prompt，见下文[开发质量规范](#开发质量规范跨语言)、[文档处理](#文档处理办公软件操作与互转)与[代码与数据处理](#代码与数据处理fortranpythonvue-与科学数据)三节。
 

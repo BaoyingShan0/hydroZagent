@@ -1,6 +1,6 @@
 # 浙水智能体桌面端
 
-这是 `community-hydroagent` 的 Electron 用户入口，负责项目与会话管理、水利品牌界面和局域网 Web 共享。
+这是 `hydroZagent` 的 Electron 用户入口，负责项目与会话管理、水利品牌界面和局域网 Web 共享。
 
 桌面端必须与仓库根目录的 Agent 核心一起开发和发布。统一的安装、启动、检查和发行命令见[仓库主说明](../../README.md)，运行关系见[产品架构](../../docs/product-architecture.md)。
 

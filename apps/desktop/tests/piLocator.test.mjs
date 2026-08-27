@@ -66,7 +66,7 @@ test("uses the pi shim bin directory as PATH prefix on macOS when node is beside
 	}
 });
 
-test("prefers the integrated community-hydroagent CLI over a global pi installation", () => {
+test("prefers the integrated hydroZagent CLI over a global pi installation", () => {
 	const root = join(tmpdir(), `hydrozagent-integrated-cli-${process.pid}-${Date.now()}`);
 	const integratedCli = join(root, "packages", "coding-agent", "dist", "cli.js");
 	mkdirSync(join(root, "packages", "coding-agent", "dist"), { recursive: true });
