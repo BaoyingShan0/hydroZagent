@@ -1,5 +1,6 @@
-# Development Rules
+h## Development Rules
 
+使用中文回复 
 ## Conversational Style
 
 - Keep answers short and concise
@@ -166,3 +167,5 @@ Attribution:
 ## User Override
 
 If the user's instructions conflict with any rule in this document, ask for explicit confirmation before overriding. Only then execute their instructions.
+
+ 
