@@ -64,6 +64,7 @@ import {
 	prepareCompaction,
 	shouldCompact,
 } from "./compaction/index.ts";
+import { isConnectionError } from "./connection-error.ts";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.ts";
 import { exportSessionToHtml, type ToolHtmlRenderer } from "./export-html/index.ts";
 import { createToolHtmlRenderer } from "./export-html/tool-renderer.ts";
@@ -165,6 +166,17 @@ export type AgentSessionEvent =
 	  }
 	| { type: "auto_retry_start"; attempt: number; maxAttempts: number; delayMs: number; errorMessage: string }
 	| { type: "auto_retry_end"; success: boolean; attempt: number; finalError?: string }
+	| {
+			// A model/provider failed after its same-model retries were exhausted; the session
+			// switched to a fallback model and is resuming. Distinct from a user abort, so the UI
+			// can show "provider down, recovering" rather than treating it as a stop.
+			type: "model_failover";
+			fromProvider: string;
+			fromModel: string;
+			toProvider: string;
+			toModel: string;
+			errorMessage: string;
+	  }
 	| {
 			type: "summarization_retry_scheduled";
 			attempt: number;
@@ -334,6 +346,9 @@ export class AgentSession {
 	// Retry state
 	private _retryAbortController: AbortController | undefined = undefined;
 	private _retryAttempt = 0;
+	// Models circuit-broken this session (key `provider\0id`): their same-model retries were
+	// exhausted, so failover skips them when choosing a fallback. Persists for the session.
+	private readonly _failedModels = new Set<string>();
 
 	// Bash execution state
 	private readonly _bashAbortControllers = new Set<AbortController>();
@@ -1081,8 +1096,17 @@ export class AgentSession {
 			return false;
 		}
 
-		if (this._isRetryableError(msg) && (await this._prepareRetry(msg))) {
-			return true;
+		if (this._isRetryableError(msg)) {
+			// First exhaust same-model retries with backoff.
+			if (await this._prepareRetry(msg)) {
+				return true;
+			}
+			// If the model is still failing with a connection/timeout error (the provider
+			// endpoint looks unreachable), circuit-break it and fail over to another model
+			// (same provider first, then any provider). Capacity errors stay on retry only.
+			if (isConnectionError(msg) && (await this._prepareFailover(msg))) {
+				return true;
+			}
 		}
 
 		if (msg.stopReason === "error" && this._retryAttempt > 0) {
@@ -2732,6 +2756,82 @@ export class AgentSession {
 			this._retryAbortController = undefined;
 		}
 
+		return true;
+	}
+
+	/** Session-scoped key identifying a specific provider/model pair. */
+	private static _modelKey(provider: string, id: string): string {
+		return `${provider}\0${id}`;
+	}
+
+	/**
+	 * Pick a fallback model after the current one has been circuit-broken.
+	 * Tier 1: another model from the same provider. Tier 2: a model from any other provider.
+	 * Only considers authenticated (available) models and skips ones already circuit-broken.
+	 */
+	private _selectFailoverCandidate(current: Model<any>): Model<any> | undefined {
+		const available = this._modelRuntime.getAvailableSnapshot();
+		const isEligible = (m: Model<any>): boolean =>
+			!this._failedModels.has(AgentSession._modelKey(m.provider, m.id)) &&
+			!(m.provider === current.provider && m.id === current.id);
+
+		const sameProvider = available.find((m) => m.provider === current.provider && isEligible(m));
+		if (sameProvider) return sameProvider;
+		return available.find(isEligible);
+	}
+
+	/**
+	 * Circuit-break the current model and fail over to a fallback so the task continues
+	 * instead of surfacing the failure and forcing the user to retype "continue".
+	 * Returns true when a switch was made and the caller should continue the run.
+	 */
+	private async _prepareFailover(message: AssistantMessage): Promise<boolean> {
+		if (!this.settingsManager.getRetrySettings().enabled) return false;
+		const current = this.model;
+		if (!current) return false;
+
+		// Same-model retries are exhausted: don't try this model again this session.
+		this._failedModels.add(AgentSession._modelKey(current.provider, current.id));
+
+		const candidate = this._selectFailoverCandidate(current);
+		// No fallback available: let the caller surface the failure (and emit auto_retry_end).
+		if (!candidate) return false;
+
+		// Drop the error message from agent state (kept in session history) so the retry
+		// context does not include the failed turn.
+		const messages = this.agent.state.messages;
+		if (messages.length > 0 && messages[messages.length - 1].role === "assistant") {
+			this.agent.state.messages = messages.slice(0, -1);
+		}
+
+		try {
+			await this.setModel(candidate);
+		} catch {
+			// Could not switch (e.g. auth lapsed): mark the candidate failed and give up this round.
+			this._failedModels.add(AgentSession._modelKey(candidate.provider, candidate.id));
+			return false;
+		}
+
+		// Close out the old model's retry sequence so the UI indicator does not dangle, then
+		// give the fallback model its own fresh retry budget.
+		if (this._retryAttempt > 0) {
+			this._emit({
+				type: "auto_retry_end",
+				success: false,
+				attempt: this._retryAttempt,
+				finalError: message.errorMessage,
+			});
+		}
+		this._retryAttempt = 0;
+
+		this._emit({
+			type: "model_failover",
+			fromProvider: current.provider,
+			fromModel: current.id,
+			toProvider: candidate.provider,
+			toModel: candidate.id,
+			errorMessage: message.errorMessage || "Unknown error",
+		});
 		return true;
 	}
 

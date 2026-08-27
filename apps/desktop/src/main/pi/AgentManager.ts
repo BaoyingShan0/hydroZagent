@@ -3724,6 +3724,18 @@ export class AgentManager {
 			}
 		}
 
+		// 模型/供应商熔断后自动切换到备用模型继续：这是系统故障恢复，不是最终失败，
+		// 也不是用户中止。保持 running 状态并给出可见提示，让用户明确“正在恢复”。
+		if (typed.type === "model_failover") {
+			if (runtime && !this.recentlyAborted.has(agentId)) {
+				runtime.tab.status = "running";
+				const from = `${String(typed.fromProvider)}/${String(typed.fromModel)}`;
+				const to = `${String(typed.toProvider)}/${String(typed.toModel)}`;
+				this.addMessage(agentId, "system", `模型 ${from} 故障，正在切换到 ${to} 继续…`);
+				this.emitState();
+			}
+		}
+
 		// 自动/手动压缩事件（pi 在自动或手动压缩完成后会发出这些事件），
 		// 用于记录压缩耗时和结果，便于排查压缩性能问题。
 		if (typed.type === "compaction_start") {
