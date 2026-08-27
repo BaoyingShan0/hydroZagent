@@ -327,7 +327,7 @@ export const ToolCard = memo(function ToolCard(props: {
 		>
 		<section
 			// 品牌主题统一使用白色工具卡和青碧透明边界，展开能力与状态表达保持不变。
-			className={`tool-card w-full min-w-0 border border-border-subtle bg-bg-panel px-2 py-1 tone-${tone}${isSkillRead ? " tool-card--skill" : ""}${isAskCard ? " tool-card--ask" : ""}${status === "running" ? " tool-card--running" : ""}`}
+			className={`tool-card w-full min-w-0 border-0 bg-bg-panel px-1.5 py-0.5 tone-${tone}${isSkillRead ? " tool-card--skill" : ""}${isAskCard ? " tool-card--ask" : ""}${status === "running" ? " tool-card--running" : ""}`}
 			data-status={status}
 			data-tool-kind={isSkillRead ? "skill" : getToolKind(toolName)}
 			data-message-id={props.message.id}
@@ -344,14 +344,14 @@ export const ToolCard = memo(function ToolCard(props: {
 				)}
 				<button
 					type="button"
-					className="flex min-h-7 min-w-0 flex-[1_1_auto] cursor-pointer items-center gap-2 border-0 bg-transparent py-1 pr-0.5 pl-1 text-left text-control leading-5 text-text-secondary focus-visible:-outline-offset-2 focus-visible:outline-2"
+					className="flex min-h-6 min-w-0 flex-[1_1_auto] cursor-pointer items-center gap-1.5 border-0 bg-transparent py-0.5 pr-0.5 pl-1 text-left text-xs leading-4 text-text-secondary focus-visible:-outline-offset-2 focus-visible:outline-2"
 					onClick={() => setExpanded((v) => !v)}
 					aria-expanded={expanded}
 				>
 					<span className="tool-card-icon inline-flex shrink-0 items-center justify-center">
-						{isSkillRead ? <Brain size={16} /> : isAskCard ? <MessageCircle size={16} /> : toolIcon(toolName)}
+						{isSkillRead ? <Brain size={14} /> : isAskCard ? <MessageCircle size={14} /> : toolIcon(toolName)}
 					</span>
-					<span className="shrink-0 text-control font-medium lowercase text-text-secondary">
+					<span className="shrink-0 text-xs font-medium lowercase text-text-secondary">
 						{isSkillRead ? `skill:${skillName}` : isAskCard ? t("ask.toolName") : toolName}
 					</span>
 					{expanded ? (

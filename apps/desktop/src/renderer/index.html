@@ -41,18 +41,7 @@
         transition: opacity 420ms cubic-bezier(0.22, 1, 0.36, 1), transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
         will-change: opacity, transform;
       }
-      #boot-overlay::before {
-        content: "";
-        position: absolute;
-        top: -280px;
-        left: 50%;
-        width: 680px;
-        height: 680px;
-        transform: translateX(-50%);
-        border-radius: 50%;
-        background: color-mix(in srgb, var(--hydro-lake) 10%, transparent);
-        pointer-events: none;
-      }
+
       #boot-overlay.fade-out {
         opacity: 0;
         transform: scale(1.02);
@@ -69,45 +58,45 @@
 
       .boot-logo {
         position: relative;
-        width: 92px;
-        height: 92px;
+        width: 72px;
+        height: 72px;
         display: grid;
         place-items: center;
-        border-radius: 24px;
-        background: var(--hydro-qing);
-        box-shadow:
-          0 1px 0 color-mix(in srgb, #fff 18%, transparent) inset,
-          0 14px 32px color-mix(in srgb, #000 12%, transparent);
-      }
-      .boot-logo::after {
-        content: "";
-        position: absolute;
-        inset: -10px;
-        border-radius: 28px;
-        border: 1px solid color-mix(in srgb, var(--hydro-qing) 18%, transparent);
-        animation: boot-ring 1.8s ease-out infinite;
-        pointer-events: none;
+        border-radius: 22%;
+        background: transparent;
+        box-shadow: 0 2px 8px color-mix(in srgb, #000 8%, transparent);
+        ring: 1px color-mix(in srgb, #fff 30%, transparent);
       }
       .boot-logo svg {
-        width: 48px;
-        height: 48px;
+        width: 72px;
+        height: 72px;
+        border-radius: 22%;
       }
 
       .boot-title {
         color: var(--hydro-qing);
-        font-size: 28px;
-        font-weight: 500;
-        letter-spacing: 0.08em;
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
         font-family: "Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei UI", system-ui, sans-serif;
-        line-height: 1.1;
+        line-height: 42px;
       }
       .boot-subtitle {
         color: color-mix(in srgb, var(--hydro-qing) 72%, transparent);
-        font-size: 14px;
-        font-weight: 500;
-        letter-spacing: 0.04em;
+        font-size: 15px;
+        font-weight: 400;
+        letter-spacing: 0.06em;
         font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
-        line-height: 1.35;
+        line-height: 24px;
+      }
+      .boot-brand-name {
+        color: color-mix(in srgb, var(--hydro-qing) 50%, transparent);
+        font-size: 12px;
+        font-weight: 400;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+        line-height: 1;
       }
 
       .boot-progress {
@@ -136,20 +125,7 @@
           transform: translateY(0);
         }
       }
-      @keyframes boot-ring {
-        0% {
-          opacity: 0.55;
-          transform: scale(0.92);
-        }
-        70% {
-          opacity: 0;
-          transform: scale(1.08);
-        }
-        100% {
-          opacity: 0;
-          transform: scale(1.08);
-        }
-      }
+
       @keyframes boot-progress {
         0% {
           transform: translateX(-120%);
@@ -162,7 +138,6 @@
       @media (prefers-reduced-motion: reduce) {
         .boot-brand,
         .boot-progress,
-        .boot-logo::after,
         .boot-progress-bar {
           animation: none !important;
         }
@@ -179,13 +154,15 @@
       <div class="boot-brand">
         <div class="boot-logo">
           <svg viewBox="0 0 120 120" aria-hidden="true">
-            <path d="M60 17c-13 18-29 34-29 54a29 29 0 0 0 58 0c0-20-16-36-29-54Z" fill="none" stroke="#f7f8f7" stroke-width="5" stroke-linejoin="round"/>
-            <path d="M40 60c9-7 18-7 27 0s18 7 27 0M36 72c10-7 20-7 30 0s20 7 30 0M41 84c8-5 16-5 24 0s16 5 24 0" fill="none" stroke="#f7f8f7" stroke-width="5" stroke-linecap="round"/>
-            <circle cx="60" cy="44" r="4" fill="#c94f45"/>
+            <rect width="120" height="120" rx="28" fill="#5b6a76"/>
+            <path d="M60 18c-13 18-29 34-29 54a29 29 0 0 0 58 0c0-20-16-36-29-54Z" fill="none" stroke="#f7f8f7" stroke-width="5" stroke-linejoin="round"/>
+            <path d="M40 61c9-7 18-7 27 0s18 7 27 0M36 73c10-7 20-7 30 0s20 7 30 0M41 85c8-5 16-5 24 0s16 5 24 0" fill="none" stroke="#f7f8f7" stroke-width="5" stroke-linecap="round"/>
+            <circle cx="60" cy="45" r="4" fill="#c94f45"/>
           </svg>
         </div>
         <strong class="boot-title">浙水智能体</strong>
         <span class="boot-subtitle">AI 赋能水利 · 智慧守护江河</span>
+        <span class="boot-brand-name">hydrozagent</span>
       </div>
       <div class="boot-progress" aria-hidden="true">
         <div class="boot-progress-bar"></div>

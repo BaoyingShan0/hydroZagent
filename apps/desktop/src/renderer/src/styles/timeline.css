@@ -67,7 +67,7 @@
 }
 
 /* 中间回答：与最终回答同主尺寸/主色（它也是回答）。
- * 与思考/工具的间距由 Tailwind my-3 承担；这里锁正文 token，避免 markdown-body 子选择器把行高拉回过程档。 */
+ * 与思考/工具的间距由 Tailwind my-1.5 承担；这里锁正文 token，避免 markdown-body 子选择器把行高拉回过程档。 */
 .execution-interim {
   min-width: 0;
   color: var(--color-text-primary);
@@ -154,15 +154,15 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  height: 26px;
-  padding: 0 12px;
-  border: 1px solid var(--color-border-subtle);
+  height: 28px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border-default);
   /* 与其他按钮（shadcn rounded-md）同一圆角档位，不再用全圆 pill */
   border-radius: var(--radius-md);
   background: var(--color-chat-card-bg);
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
   font-size: var(--font-size-caption);
-  font-weight: 500;
+  font-weight: 600;
   line-height: var(--line-height-caption);
   cursor: pointer;
   text-align: left;
@@ -186,7 +186,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  margin-top: var(--space-3);
+  margin-top: var(--space-1);
   /* 过程行已无左侧圆点轨，不再画贯穿竖线，也不再给中间回答留 26px 轨道缩进。 */
   padding-left: 0;
 }

@@ -234,6 +234,7 @@ export function formatDuration(ms: number): string {
 
 export function formatTime(timestamp: number): string {
   return new Date(timestamp).toLocaleString(undefined, {
+    year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
