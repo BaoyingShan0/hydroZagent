@@ -153,25 +153,25 @@ export function SidebarContent(props: SidebarContentProps) {
       {props.chrome}
       <div className="sidebar-body flex min-h-0 flex-1 flex-col gap-2 px-2 pt-1 pb-1">
         {/* 搜索只过滤导航和当前项目内容；会话加载仍由 controller/App 的懒加载策略负责。 */}
-        <div className="search-row grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-[10px] bg-muted/25 p-1">
-          <div className="search-box relative min-w-0">
+        <div className="search-row grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-[10px] bg-muted/25 px-1.5 py-1">
+          <div className="search-box relative min-w-0 flex items-center">
             <Search
-              size={12}
-              className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-muted-foreground"
+              size={10}
+              className="pointer-events-none absolute top-1/2 left-[6px] -translate-y-1/2 text-muted-foreground"
               aria-hidden="true"
             />
             <Input
               value={controller.search}
               onChange={(event) => controller.setSearch(event.target.value)}
               placeholder={t("app.search")}
-              className="h-6 pl-7 text-[11px] placeholder:text-muted-foreground/60"
+              className="h-6 w-full pl-7 text-[11px] placeholder:text-[12px] placeholder:text-muted-foreground/60"
             />
           </div>
           <Button
             type="button"
             variant="outline"
             size="icon"
-            className="round-add size-6 shrink-0"
+            className="round-add size-6 shrink-0 flex items-center justify-center"
             onClick={() => void actions.projects.add()}
             title={t("app.addProject")}
             aria-label={t("app.addProject")}

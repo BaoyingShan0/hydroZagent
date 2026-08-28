@@ -69,7 +69,7 @@ export type SessionViewProps = {
   validFilePaths: Set<string>;
   onPreviewImage: (image: ImageContent) => void;
   onOpenFile?: (path: string) => void;
-  onDiffFile?: (path: string) => void;
+  onDiffFile?: (path: string, originalContent?: string, modifiedContent?: string) => void;
   onResendUserMessage?: (message: any) => void;
   onEditMessage?: (messageId: string, newText: string) => void;
   onDeleteMessage?: (messageId: string) => void;
@@ -617,7 +617,7 @@ export function SessionView({
                     <SessionModifiedFilesStrip
                       sessionId={sessionId}
                       run={latestAgentRun}
-                      onDiffFile={onDiffFile ? (path) => onDiffFile(path) : undefined}
+                      onDiffFile={onDiffFile ?? undefined}
                     />
                   </>
                 }

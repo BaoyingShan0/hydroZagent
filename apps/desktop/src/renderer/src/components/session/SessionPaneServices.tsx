@@ -20,7 +20,7 @@ export type SessionPaneServices = {
   isLanWeb: boolean;
   showToast: (msg: string, dur?: number) => void;
   onOpenFile: (path: string) => void;
-  onDiffFile: (path: string) => void;
+  onDiffFile?: (path: string, originalContent?: string, modifiedContent?: string) => void;
   onPreviewImage: (img: ImageContent | null) => void;
   abortAgent: (agentId?: string) => Promise<void>;
   restartActiveAgent: (agentId?: string) => Promise<void>;

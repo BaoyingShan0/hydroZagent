@@ -15,7 +15,7 @@ import { SESSION_TAB_DRAG_MIME } from "../../utils/sessionSplitEdge";
 /** 与 ProjectTree.treeRowClass 同尺寸同圆角：分层后 utility 生效，必须「新学旧」对齐项目行，
  * 不能再用 min-h-11/rounded-xl（会明显高于/圆于项目行）。 */
 const sessionRowClass =
-	"group/resource conversation agent-row relative flex min-h-7 w-full items-center gap-1.5 rounded-lg border border-transparent px-2 py-0 text-left text-caption text-foreground shadow-none transition-[background-color,border-color,box-shadow] duration-200 hover:border-border-subtle hover:bg-muted/60 hover:text-foreground focus-visible:bg-muted/70 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset";
+	"group/resource conversation agent-row relative flex min-h-7 w-full items-center gap-1.5 rounded-lg border border-transparent px-2 py-0 text-left text-widget-item text-foreground shadow-none transition-[background-color,border-color,box-shadow] duration-200 hover:border-border-subtle hover:bg-muted/60 hover:text-foreground focus-visible:bg-muted/70 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset";
 
 /** 叶子选中态：灰底、无描边。比 hover（muted/60）再用 active 面深一档，否则白底上几乎看不见。 */
 const selectedRowClass = "active bg-bg-active text-foreground before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-full before:bg-danger";
@@ -273,7 +273,7 @@ export function SessionTree(props: {
             >
               {renderRuntimeStatusDot(child.agent.status)}
               <div className="conversation-body min-w-0 flex-1 transition-[padding-right] group-hover/row:pr-7 group-focus-within/row:pr-7"><div className="conversation-title flex min-w-0 items-center gap-1.5">
-                <strong className="min-w-0 flex-1 truncate font-medium">{child.agent.title}</strong>
+                <strong className="min-w-0 flex-1 truncate">{child.agent.title}</strong>
                 <SessionBackendMark backend={child.agent.backend} />
                 {child.agent.noSession && <span className="anonymous-indicator" title={t("app.anonymousChat")}><HatGlasses size={11} aria-hidden="true" /></span>}
                 {renderToggle(groupKey, childCount)}
@@ -328,7 +328,7 @@ export function SessionTree(props: {
           {renderRuntimeStatusDot(runtimeSnapshot?.status)}
           <div className="conversation-body min-w-0 flex-1 transition-[padding-right] group-hover/row:pr-7 group-focus-within/row:pr-7"><div className="conversation-title flex min-w-0 items-center gap-1.5">
             {/* 历史会话（无运行态）文字降一级，与活跃 Agent/运行中会话形成层级差 */}
-            <strong className={cn("min-w-0 flex-1 truncate", runtime ? "font-medium" : "font-normal text-muted-foreground/90")}>{child.session.name || t("common.untitled")}</strong>
+            <strong className={cn("min-w-0 flex-1 truncate", runtime ? "font-normal" : "font-normal text-muted-foreground/90")}>{child.session.name || t("common.untitled")}</strong>
             {(child.session.backend === "dsh" || child.session.backend === "imagegen") && <SessionBackendMark backend={child.session.backend} />}
             {/* 生图角标：imagegen 后端会话的徽标已含生图标识，此处仅对遗留 pi 后端含生图消息的会话补图标 */}
             {child.session.backend !== "imagegen" && child.session.hasImageGen && (
@@ -387,7 +387,7 @@ export function SessionTree(props: {
             >
               <div className="conversation-body min-w-0 flex-1 transition-[padding-right] group-hover/row:pr-7 group-focus-within/row:pr-7"><div className="conversation-title flex min-w-0 items-center gap-1.5">
                 {renderRuntimeStatusDot(runtime?.status)}
-                <strong className="min-w-0 flex-1 truncate font-medium">{session.title}</strong>
+                <strong className="min-w-0 flex-1 truncate font-normal">{session.title}</strong>
                 <SessionBackendMark backend={session.backend} />
               </div></div>
             </button>
