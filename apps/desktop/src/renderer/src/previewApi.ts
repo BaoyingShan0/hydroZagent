@@ -5,10 +5,12 @@ import {
 } from "../../shared/types";
 import type {
 	AppSettings,
+	ChatMessage,
 	FileTreeNode,
 	Project,
 	SessionRecord,
 	SessionSummary,
+	SessionTurnFeedback,
 	TerminalDataEvent,
 	TerminalExitEvent,
 	TerminalTab,
@@ -16,6 +18,7 @@ import type {
 import { t } from "./i18n";
 
 const now = Date.now();
+let previewTurnFeedback: SessionTurnFeedback[] = [];
 
 const projects: Project[] = [
 	{
@@ -83,6 +86,28 @@ function getSessions(): SessionSummary[] {
 			preview: t("preview.sessionPreview"),
 			updatedAt: now,
 			messageCount: 3,
+		},
+	];
+}
+
+/** 浏览器预览的确定性会话夹具：用于不启动真实 Agent 的时间线与逐轮反馈视觉回归。 */
+function getPreviewMessages(): ChatMessage[] {
+	return [
+		{
+			id: "preview-user-1",
+			agentId: "preview-agent",
+			role: "user",
+			text: "请概括今天的水情分析结果，并标出需要人工复核的部分。",
+			timestamp: now - 12_400,
+		},
+		{
+			id: "preview-assistant-1",
+			agentId: "preview-agent",
+			role: "assistant",
+			text: "今日水情整体平稳，主要站点水位处于常年同期合理区间。上游来水较昨日小幅增加，尚未触发预警阈值。\n\n需人工复核：两处遥测站在 14:00 左右出现短时跳变，建议对照原始测报记录确认。",
+			timestamp: now - 5_600,
+			stopReason: "stop",
+			meta: { done: true },
 		},
 	];
 }
@@ -417,6 +442,7 @@ export function createPreviewApi(): PiDesktopApi {
 				createdAt: session.updatedAt,
 				updatedAt: session.updatedAt,
 				wsl: session.wsl,
+				turnFeedback: previewTurnFeedback.map((feedback) => ({ ...feedback })),
 			})),
 			// 预览模式无后台扫描推送：返回空退订函数满足接口契约
 			onCatalogRefreshed: () => () => undefined,
@@ -459,20 +485,34 @@ export function createPreviewApi(): PiDesktopApi {
 					noSession: true,
 				},
 			}),
-			updateRecord: async (sessionId, patch): Promise<SessionRecord> => ({
-				id: sessionId,
-				projectId: projects[0].id,
-				title: patch.title || "Preview session",
-				source: "pi",
-				environment: "native",
-				preview: "",
-				messageCount: 0,
-				status: "draft",
-				model: patch.model ?? undefined,
-				thinkingLevel: patch.thinkingLevel ?? undefined,
-				createdAt: now,
-				updatedAt: now,
-			}),
+			updateRecord: async (sessionId, patch): Promise<SessionRecord> => {
+				if (patch.turnFeedback) {
+					const value = { ...patch.turnFeedback, updatedAt: Date.now() };
+					const index = previewTurnFeedback.findIndex(
+						(feedback) => feedback.turnId === value.turnId,
+					);
+					if (index >= 0) previewTurnFeedback[index] = value;
+					else previewTurnFeedback.push(value);
+				}
+				const session = getSessions()[0];
+				return {
+					id: sessionId,
+					projectId: projects[0].id,
+					title: patch.title || session.name || "Preview session",
+					source: "pi",
+					environment: "native",
+					filePath: session.filePath,
+					projectPath: session.projectPath,
+					preview: session.preview,
+					messageCount: session.messageCount,
+					status: "active",
+					model: patch.model ?? undefined,
+					thinkingLevel: patch.thinkingLevel ?? undefined,
+					turnFeedback: previewTurnFeedback.map((feedback) => ({ ...feedback })),
+					createdAt: session.updatedAt,
+					updatedAt: Date.now(),
+				};
+			},
 			deleteRecord: async () => true,
 			archiveRecord: async () => true,
 			unarchiveRecord: async () => true,
@@ -482,8 +522,12 @@ export function createPreviewApi(): PiDesktopApi {
 				targetSessionId: `${sessionId}:copy`,
 			}),
 			exportRecordHtml: async () => ({ path: "preview-session.html" }),
-			readRecordMessages: async () => [],
-			readRecordMessagePage: async () => ({ messages: [], total: 0, nextBefore: null }),
+			readRecordMessages: async () => getPreviewMessages(),
+			readRecordMessagePage: async () => ({
+				messages: getPreviewMessages(),
+				total: getPreviewMessages().length,
+				nextBefore: null,
+			}),
 			editCatalogMessage: async () => ({ ok: true as const, value: undefined }),
 			deleteCatalogMessage: async () => ({ ok: true as const, value: undefined }),
 			prepareCatalogResend: async () => ({ ok: true as const, value: { text: "" } }),

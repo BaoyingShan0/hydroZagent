@@ -14,6 +14,8 @@ import type {
 	SessionRecord,
 	SessionSource,
 	SessionSummary,
+	SessionTurnFeedback,
+	SessionTurnFeedbackInput,
 } from "../../shared/types";
 import type { SessionProxyOverride } from "../../shared/types/session";
 import { getAppLogger } from "../logging/sharedLogger";
@@ -55,6 +57,8 @@ export type SessionCatalogEntry = {
 	permissionPreset?: string;
 	/** 会话级代理覆盖（缺省 = 跟随全局）。DSH 会话的设置在 host 启动时被聚合应用。 */
 	proxy?: SessionProxyOverride;
+	/** PiDeck 自有的逐轮用户反馈；与会话记录一起持久化，不改写后端会话日志。 */
+	turnFeedback?: SessionTurnFeedback[];
 	createdAt: number;
 	updatedAt: number;
 };
@@ -114,7 +118,48 @@ function cloneEntry(entry: SessionCatalogEntry): SessionCatalogEntry {
 	return {
 		...entry,
 		model: entry.model ? { ...entry.model } : undefined,
+		turnFeedback: entry.turnFeedback?.map((feedback) => ({ ...feedback })),
 	};
+}
+
+/** Catalog 的纵深校验；边界使用共享 validator，这里不依赖渲染输入可信。 */
+function isValidTurnFeedbackInput(value: unknown): value is SessionTurnFeedbackInput {
+	if (!value || typeof value !== "object") return false;
+	const input = value as Record<string, unknown>;
+	return (
+		typeof input.turnId === "string" &&
+		input.turnId.trim().length > 0 &&
+		input.turnId.length <= 512 &&
+		typeof input.responseMessageId === "string" &&
+		input.responseMessageId.trim().length > 0 &&
+		input.responseMessageId.length <= 512 &&
+		typeof input.rating === "number" &&
+		Number.isInteger(input.rating) &&
+		input.rating >= 0 &&
+		input.rating <= 5 &&
+		typeof input.comment === "string" &&
+		input.comment.length <= 2000 &&
+		typeof input.durationMs === "number" &&
+		Number.isSafeInteger(input.durationMs) &&
+		input.durationMs >= 0
+	);
+}
+
+/** 同一轮只保留最近一次评价；不同轮次保持原顺序，便于导出与人工审阅。 */
+function upsertTurnFeedback(
+	current: SessionTurnFeedback[] | undefined,
+	input: SessionTurnFeedbackInput,
+	updatedAt: number,
+): SessionTurnFeedback[] {
+	if (!isValidTurnFeedbackInput(input)) {
+		throw new Error("Invalid session turn feedback");
+	}
+	const next = (current ?? []).map((feedback) => ({ ...feedback }));
+	const value: SessionTurnFeedback = { ...input, updatedAt };
+	const index = next.findIndex((feedback) => feedback.turnId === input.turnId);
+	if (index >= 0) next[index] = value;
+	else next.push(value);
+	return next;
 }
 
 function equalModel(
@@ -570,6 +615,7 @@ export class SessionCatalog {
 			thinkingLevel?: string | null;
 			permissionPreset?: string | null;
 			proxy?: SessionProxyOverride | null;
+			turnFeedback?: SessionTurnFeedbackInput;
 			/** 切到生图后端时甩开 pi 会话文件引用（null = 清空）。 */
 			filePath?: string | null;
 			piSessionId?: string | null;
@@ -588,6 +634,13 @@ export class SessionCatalog {
 			if (patch.piSessionId !== undefined) transient.piSessionId = patch.piSessionId ?? undefined;
 			// null = 清除覆盖恢复跟随全局
 			if (patch.proxy !== undefined) transient.proxy = patch.proxy ?? undefined;
+			if (patch.turnFeedback !== undefined) {
+				transient.turnFeedback = upsertTurnFeedback(
+					transient.turnFeedback,
+					patch.turnFeedback,
+					Date.now(),
+				);
+			}
 			transient.updatedAt = patch.updatedAt ?? Date.now();
 			return this.recordFromEntry(transient);
 		}
@@ -602,6 +655,13 @@ export class SessionCatalog {
 			if (patch.piSessionId !== undefined) nextEntry.piSessionId = patch.piSessionId ?? undefined;
 			// null = 清除覆盖恢复跟随全局
 			if (patch.proxy !== undefined) nextEntry.proxy = patch.proxy ?? undefined;
+			if (patch.turnFeedback !== undefined) {
+				nextEntry.turnFeedback = upsertTurnFeedback(
+					nextEntry.turnFeedback,
+					patch.turnFeedback,
+					Date.now(),
+				);
+			}
 			nextEntry.updatedAt = patch.updatedAt ?? Date.now();
 			return { value: cloneEntry(nextEntry), changed: true };
 		});
@@ -678,6 +738,18 @@ export class SessionCatalog {
 					entry.model ??= duplicate.model;
 					entry.thinkingLevel ??= duplicate.thinkingLevel;
 					entry.importedSourceId ??= duplicate.importedSourceId;
+					for (const feedback of duplicate.turnFeedback ?? []) {
+						const existing = entry.turnFeedback?.find(
+							(candidate) => candidate.turnId === feedback.turnId,
+						);
+						if (!existing || feedback.updatedAt > existing.updatedAt) {
+							entry.turnFeedback = upsertTurnFeedback(
+								entry.turnFeedback,
+								feedback,
+								feedback.updatedAt,
+							);
+						}
+					}
 					entry.createdAt = Math.min(entry.createdAt, duplicate.createdAt);
 					entries.splice(duplicateIndex, 1);
 				}
@@ -975,6 +1047,7 @@ export class SessionCatalog {
 			permissionPreset: entry.permissionPreset,
 			dshSessionId: entry.dshSessionId,
 			proxy: entry.proxy ? { ...entry.proxy } : undefined,
+			turnFeedback: entry.turnFeedback?.map((feedback) => ({ ...feedback })),
 			createdAt: entry.createdAt,
 			updatedAt: summary?.updatedAt ?? entry.updatedAt,
 			wsl: summary?.wsl,

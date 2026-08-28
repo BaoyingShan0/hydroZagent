@@ -81,6 +81,47 @@ export type SessionProxyOverride = {
 	mode: SessionProxyMode;
 };
 
+/** 单轮回复的用户反馈输入；turnId/responseMessageId 把评价稳定关联到会话内容。 */
+export type SessionTurnFeedbackInput = {
+	turnId: string;
+	responseMessageId: string;
+	rating: number;
+	comment: string;
+	durationMs: number;
+};
+
+/** 随 SessionRecord 持久化的反馈记录；updatedAt 供并发写入与后续评估审计。 */
+export type SessionTurnFeedback = SessionTurnFeedbackInput & {
+	updatedAt: number;
+};
+
+export const SESSION_TURN_FEEDBACK_COMMENT_MAX_LENGTH = 2000;
+
+/** 主进程边界共享校验：拒绝无效星级、超长意见和不可追溯的轮次标识。 */
+export function isSessionTurnFeedbackInput(
+	value: unknown,
+): value is SessionTurnFeedbackInput {
+	if (!value || typeof value !== "object") return false;
+	const feedback = value as Partial<SessionTurnFeedbackInput>;
+	return (
+		typeof feedback.turnId === "string" &&
+		feedback.turnId.trim().length > 0 &&
+		feedback.turnId.length <= 512 &&
+		typeof feedback.responseMessageId === "string" &&
+		feedback.responseMessageId.trim().length > 0 &&
+		feedback.responseMessageId.length <= 512 &&
+		Number.isInteger(feedback.rating) &&
+		feedback.rating !== undefined &&
+		feedback.rating >= 0 &&
+		feedback.rating <= 5 &&
+		typeof feedback.comment === "string" &&
+		feedback.comment.length <= SESSION_TURN_FEEDBACK_COMMENT_MAX_LENGTH &&
+		typeof feedback.durationMs === "number" &&
+		Number.isSafeInteger(feedback.durationMs) &&
+		feedback.durationMs >= 0
+	);
+}
+
 export type SessionSummary = {
 	id: string;
 	filePath: string;
@@ -144,6 +185,8 @@ export type SessionRecord = {
 	dshSessionId?: string;
 	/** 会话级代理覆盖（缺省 = 跟随全局）；沿用全局代理 URL，仅生效于下次 spawn。 */
 	proxy?: SessionProxyOverride;
+	/** 按回复轮次保存的 0–5 星与文字意见；缺省表示旧会话尚无反馈。 */
+	turnFeedback?: SessionTurnFeedback[];
 	createdAt: number;
 	updatedAt: number;
 	wsl?: boolean;
@@ -195,6 +238,8 @@ export type UpdateSessionRecordInput = {
 	backend?: import("./agent").AgentBackend;
 	/** 会话级代理覆盖；null = 恢复跟随全局（清除已保存覆盖）。 */
 	proxy?: SessionProxyOverride | null;
+	/** 原子化 upsert 单轮反馈，避免分屏或连续输入覆盖同一 SessionRecord 的其它反馈。 */
+	turnFeedback?: SessionTurnFeedbackInput;
 };
 
 export type ForkMessage = {

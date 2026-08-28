@@ -24,6 +24,7 @@ import { ProcessSummaryToggle } from "./ProcessSummaryToggle";
 import { TurnAuthorHeader } from "./TurnAuthorHeader";
 import { ThinkingStep } from "./ThinkingStep";
 import { ToolStep } from "./ToolStep";
+import { TurnFeedback } from "./TurnFeedback";
 import { useTurnExecution } from "./useTurnExecution";
 import type { DiffFileHandler } from "../ToolCallComponents";
 
@@ -228,6 +229,7 @@ export const TurnRow = memo(
 		.filter(Boolean)
 		.join("\n\n");
 	const containsImageGen = assistantMessages.some((item) => Boolean(item.message.meta?.imageGen));
+	const responseMessageId = assistantMessages.at(-1)?.message.id;
 
 	// 本轮没有任何可渲染内容时不输出空容器
 	if (displayItems.length === 0 && allImages.length === 0) return null;
@@ -383,7 +385,7 @@ export const TurnRow = memo(
 
 				{/* 操作栏：按钮 + 尾部耗时同行 */}
 				{mergedText && !editing && (
-					<div className="flex min-h-6 items-center gap-1 opacity-55 transition-opacity hover:opacity-100 focus-within:opacity-100">
+					<div className="flex min-h-6 w-full min-w-0 items-center gap-1 opacity-55 transition-opacity hover:opacity-100 focus-within:opacity-100">
 						{!containsImageGen && <CopyMenu
 							text={stripMarkdown(mergedText)}
 							markdown={mergedText}
@@ -401,7 +403,7 @@ export const TurnRow = memo(
 						</Button>
 						{!props.isStreaming &&
 							!props.agentRunning &&
-							assistantMessages.at(-1)?.message.id && (
+							responseMessageId && (
 								<>
 									{props.onEditMessage && (
 										<Button
@@ -439,6 +441,15 @@ export const TurnRow = memo(
 									formatDuration(duration)
 								)}
 							</span>
+						)}
+						{/* 反馈收进操作栏：紧跟删除/耗时，避免形成独立卡片抢占回复层级。 */}
+						{!isRunLive && props.sessionId && responseMessageId && (
+							<TurnFeedback
+								sessionId={props.sessionId}
+								turnId={run.id}
+								responseMessageId={responseMessageId}
+								durationMs={Math.max(0, duration)}
+							/>
 						)}
 					</div>
 				)}

@@ -1234,3 +1234,92 @@ test("mergeScanned drops legacy subagent-artifacts entries", async () => {
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("upserts per-turn feedback into the durable session record", async () => {
+  const { SessionCatalog } = loadCatalog();
+  const dir = await mkdtemp(join(tmpdir(), "pideck-catalog-turn-feedback-"));
+  const filePath = join(dir, "sessions.json");
+  try {
+    const catalog = new SessionCatalog(filePath);
+    await catalog.load();
+    const session = await catalog.createDraft({
+      projectId: "project-1",
+      title: "Feedback session",
+      environment: "native",
+      backend: "dsh",
+      dshSessionId: "feedback-host-session",
+    });
+
+    await catalog.update(session.id, {
+      turnFeedback: {
+        turnId: "run-1",
+        responseMessageId: "assistant-1",
+        rating: 4,
+        comment: "有依据，但还可以更简洁。",
+        durationMs: 1234,
+      },
+    });
+    await catalog.update(session.id, {
+      turnFeedback: {
+        turnId: "run-1",
+        responseMessageId: "assistant-1",
+        rating: 0,
+        comment: "星级已清空，意见仍保留。",
+        durationMs: 1234,
+      },
+    });
+    await catalog.update(session.id, {
+      turnFeedback: {
+        turnId: "run-2",
+        responseMessageId: "assistant-2",
+        rating: 5,
+        comment: "这一轮很好。",
+        durationMs: 987,
+      },
+    });
+
+    const reloaded = new SessionCatalog(filePath);
+    await reloaded.load();
+    const feedback = reloaded.getRecord(session.id)?.turnFeedback;
+    assert.equal(feedback?.length, 2, "same turn must be replaced instead of duplicated");
+    assert.equal(feedback?.[0]?.rating, 0, "zero-star feedback must remain a persisted value");
+    assert.equal(feedback?.[0]?.comment, "星级已清空，意见仍保留。");
+    assert.equal(feedback?.[0]?.responseMessageId, "assistant-1");
+    assert.equal(feedback?.[1]?.rating, 5);
+    assert.equal(feedback?.[1]?.durationMs, 987);
+    assert.equal(typeof feedback?.[1]?.updatedAt, "number");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("rejects invalid per-turn feedback before it reaches the catalog file", async () => {
+  const { SessionCatalog } = loadCatalog();
+  const dir = await mkdtemp(join(tmpdir(), "pideck-catalog-invalid-feedback-"));
+  try {
+    const catalog = new SessionCatalog(join(dir, "sessions.json"));
+    await catalog.load();
+    const session = await catalog.createDraft({
+      projectId: "project-1",
+      title: "Feedback validation",
+      environment: "native",
+      backend: "dsh",
+      dshSessionId: "feedback-validation-session",
+    });
+    await assert.rejects(
+      () => catalog.update(session.id, {
+        turnFeedback: {
+          turnId: "run-1",
+          responseMessageId: "assistant-1",
+          rating: 6,
+          comment: "out of range",
+          durationMs: 10,
+        },
+      }),
+      /Invalid session turn feedback/,
+    );
+    assert.equal(catalog.getRecord(session.id)?.turnFeedback, undefined);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

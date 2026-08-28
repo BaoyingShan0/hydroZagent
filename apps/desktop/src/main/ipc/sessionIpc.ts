@@ -6,6 +6,7 @@
 import { ipcMain, type BrowserWindow } from "electron";
 import { ipcChannels } from "../../shared/ipc";
 import { isDshPermissionPreset } from "../../shared/types/agent";
+import { isSessionTurnFeedbackInput } from "../../shared/types/session";
 import { canonicalizeSessionPath } from "../../shared/sessionIdentity";
 import type {
 	CreateSessionDraftInput,
@@ -552,6 +553,16 @@ export function registerSessionIpc(deps: SessionIpcDeps): void {
 	ipcMain.handle(
 		ipcChannels.sessionsCatalogUpdate,
 		async (_event, sessionId: string, patch: UpdateSessionRecordInput) => {
+			if (
+				typeof sessionId !== "string" ||
+				!sessionId.trim() ||
+				!patch ||
+				typeof patch !== "object" ||
+				(patch.turnFeedback !== undefined &&
+					!isSessionTurnFeedbackInput(patch.turnFeedback))
+			) {
+				throw new Error("Invalid session update request");
+			}
 			const entry = sessionCatalog.get(sessionId);
 			if (!entry) throw new Error(mainCopy("session.notFound"));
 			// 后端锁定（草稿期可改，激活后禁止）：pi 会话文件（JSONL）与 DSH 会话

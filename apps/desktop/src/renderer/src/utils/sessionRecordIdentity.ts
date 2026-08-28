@@ -15,6 +15,25 @@ function sameModel(a: SessionRecord["model"], b: SessionRecord["model"]) {
   return a.provider === b.provider && a.modelId === b.modelId;
 }
 
+function sameTurnFeedback(
+  a: SessionRecord["turnFeedback"],
+  b: SessionRecord["turnFeedback"],
+): boolean {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  return a.every((feedback, index) => {
+    const other = b[index];
+    return (
+      feedback.turnId === other?.turnId &&
+      feedback.responseMessageId === other.responseMessageId &&
+      feedback.rating === other.rating &&
+      feedback.comment === other.comment &&
+      feedback.durationMs === other.durationMs &&
+      feedback.updatedAt === other.updatedAt
+    );
+  });
+}
+
 /** 浅比较两条 SessionRecord 是否等效。 */
 export function sameSessionRecord(a: SessionRecord, b: SessionRecord): boolean {
   if (a === b) return true;
@@ -44,7 +63,8 @@ export function sameSessionRecord(a: SessionRecord, b: SessionRecord): boolean {
     a.codexParentThreadId === b.codexParentThreadId &&
     a.codexAgentRole === b.codexAgentRole &&
     a.codexAgentNickname === b.codexAgentNickname &&
-    sameModel(a.model, b.model)
+    sameModel(a.model, b.model) &&
+    sameTurnFeedback(a.turnFeedback, b.turnFeedback)
   );
 }
 

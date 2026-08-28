@@ -28,6 +28,7 @@ import type {
 	SessionUiResponseInput,
 	UpdateSessionRecordInput,
 } from "../../shared/types";
+import { isSessionTurnFeedbackInput } from "../../shared/types/session";
 import type { PendingUiRequestSnapshot } from "../sessions/SessionRuntimeCoordinator";
 import { serializeWebClientDictionaries, webEnUS } from "./WebI18n";
 import {
@@ -527,6 +528,15 @@ export class WebServiceManager {
 				const action = sessionRecordActionMatch[2];
 				if (action === "update") {
 					const patch = await this.readJson<UpdateSessionRecordInput>(request);
+					if (
+						!patch ||
+						typeof patch !== "object" ||
+						(patch.turnFeedback !== undefined &&
+							!isSessionTurnFeedbackInput(patch.turnFeedback))
+					) {
+						this.sendError(response, 400, "webError.invalidRequest", "invalid session update request");
+						return;
+					}
 					const session = await this.deps.updateSessionRecord(sessionId, patch);
 					this.sendJson(response, { session });
 				} else if (action === "delete") {
