@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"controllerVersion": "convergence-controller-v1",
+	"canonicalizerVersion": "canonical-json-v1",
+	"hashAlgorithm": "sha256",
+	"id": "bounded-polling",
+	"description": "Three declared polling attempts with changing results remain within the policy bound.",
+	"sourceKind": "synthetic_negative",
+	"observations": [
+		{ "sequence": 1, "relativeMs": 0, "kind": "tool_outcome", "toolName": "poll", "callHash": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "outcome": "success", "resultHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "usage": { "input": 100, "output": 10, "cacheRead": 0, "cacheWrite": 0 } },
+		{ "sequence": 2, "relativeMs": 1000, "kind": "tool_outcome", "toolName": "poll", "callHash": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "outcome": "success", "resultHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "usage": { "input": 110, "output": 10, "cacheRead": 0, "cacheWrite": 0 } },
+		{ "sequence": 3, "relativeMs": 2000, "kind": "tool_outcome", "toolName": "poll", "callHash": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "outcome": "success", "resultHash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "usage": { "input": 120, "output": 10, "cacheRead": 0, "cacheWrite": 0 } }
+	],
+	"expectations": [{ "type": "no_pause_before", "sequence": 3 }]
+}

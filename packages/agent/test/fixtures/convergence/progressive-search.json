@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"controllerVersion": "convergence-controller-v1",
+	"canonicalizerVersion": "canonical-json-v1",
+	"hashAlgorithm": "sha256",
+	"id": "progressive-search",
+	"description": "Search queries narrow across observations and produce different evidence.",
+	"sourceKind": "synthetic_negative",
+	"observations": [
+		{ "sequence": 1, "relativeMs": 0, "kind": "tool_outcome", "toolName": "search", "callHash": "sha256:4111111111111111111111111111111111111111111111111111111111111111", "outcome": "success", "resultHash": "sha256:4aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "usage": { "input": 100, "output": 10, "cacheRead": 0, "cacheWrite": 0 } },
+		{ "sequence": 2, "relativeMs": 100, "kind": "tool_outcome", "toolName": "search", "callHash": "sha256:4222222222222222222222222222222222222222222222222222222222222222", "outcome": "success", "resultHash": "sha256:4bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "usage": { "input": 110, "output": 10, "cacheRead": 0, "cacheWrite": 0 } },
+		{ "sequence": 3, "relativeMs": 200, "kind": "tool_outcome", "toolName": "search", "callHash": "sha256:4333333333333333333333333333333333333333333333333333333333333333", "outcome": "success", "resultHash": "sha256:4ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "usage": { "input": 120, "output": 10, "cacheRead": 0, "cacheWrite": 0 } }
+	],
+	"expectations": [{ "type": "no_pause_before", "sequence": 3 }]
+}

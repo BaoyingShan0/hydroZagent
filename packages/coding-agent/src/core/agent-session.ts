@@ -19,6 +19,7 @@ import type {
 	Agent,
 	AgentEvent,
 	AgentMessage,
+	AgentRunOutcomeKind,
 	AgentState,
 	AgentTool,
 	PrepareNextTurnContext,
@@ -145,8 +146,10 @@ export type AgentSessionEvent =
 			type: "agent_end";
 			messages: AgentMessage[];
 			willRetry: boolean;
+			outcome?: AgentRunOutcomeKind;
+			pauseId?: string;
 	  }
-	| { type: "agent_settled" }
+	| { type: "agent_settled"; outcome?: AgentRunOutcomeKind; pauseId?: string }
 	| {
 			type: "queue_update";
 			steering: readonly string[];
@@ -325,6 +328,7 @@ export class AgentSession {
 	private _unsubscribeAgent?: () => void;
 	private _eventListeners: AgentSessionEventListener[] = [];
 	private _isAgentRunActive = false;
+	private _pendingSettledOutcome?: { outcome?: AgentRunOutcomeKind; pauseId?: string };
 	private _idleWaitPromise: Promise<void> | undefined;
 	private _resolveIdleWait: (() => void) | undefined;
 
@@ -610,10 +614,16 @@ export class AgentSession {
 
 	private async _emitAgentSettled(): Promise<void> {
 		this._isAgentRunActive = false;
+		const settledEvent = {
+			type: "agent_settled",
+			...(this._pendingSettledOutcome?.outcome ? { outcome: this._pendingSettledOutcome.outcome } : {}),
+			...(this._pendingSettledOutcome?.pauseId ? { pauseId: this._pendingSettledOutcome.pauseId } : {}),
+		} satisfies Extract<AgentSessionEvent, { type: "agent_settled" }>;
 		try {
-			await this._extensionRunner.emit({ type: "agent_settled" });
-			this._emit({ type: "agent_settled" });
+			await this._extensionRunner.emit(settledEvent);
+			this._emit(settledEvent);
 		} finally {
+			this._pendingSettledOutcome = undefined;
 			this._resolveIdleWaitIfIdle();
 		}
 	}
@@ -623,6 +633,9 @@ export class AgentSession {
 
 	/** Internal handler for agent events - shared by subscribe and reconnect */
 	private _handleAgentEvent = async (event: AgentEvent): Promise<void> => {
+		if (event.type === "agent_end") {
+			this._pendingSettledOutcome = { outcome: event.outcome, pauseId: event.pauseId };
+		}
 		// When a user message starts, check if it's from either queue and remove it BEFORE emitting
 		// This ensures the UI sees the updated queue state
 		if (event.type === "message_start" && event.message.role === "user") {
@@ -696,6 +709,9 @@ export class AgentSession {
 	};
 
 	private _willRetryAfterAgentEnd(event: Extract<AgentEvent, { type: "agent_end" }>): boolean {
+		if (event.outcome === "paused" || event.outcome === "aborted") {
+			return false;
+		}
 		const settings = this.settingsManager.getRetrySettings();
 		if (!settings.enabled || this._retryAttempt >= settings.maxRetries) {
 			return false;
@@ -744,7 +760,12 @@ export class AgentSession {
 			this._turnIndex = 0;
 			await this._extensionRunner.emit({ type: "agent_start" });
 		} else if (event.type === "agent_end") {
-			await this._extensionRunner.emit({ type: "agent_end", messages: event.messages });
+			await this._extensionRunner.emit({
+				type: "agent_end",
+				messages: event.messages,
+				outcome: event.outcome,
+				pauseId: event.pauseId,
+			});
 		} else if (event.type === "turn_start") {
 			const extensionEvent: TurnStartEvent = {
 				type: "turn_start",

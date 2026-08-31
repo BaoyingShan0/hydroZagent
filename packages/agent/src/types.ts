@@ -14,6 +14,7 @@ import type {
 	Usage,
 } from "@earendil-works/pi-ai";
 import type { Static, TSchema } from "typebox";
+import type { ConvergenceTaskSnapshot, ToolOutcomeObservation } from "./convergence/types.ts";
 
 /**
  * Stream function used by the agent loop. `Models.streamSimple` satisfies
@@ -36,8 +37,8 @@ export type StreamFn = (
  *
  * - "sequential": each tool call is prepared, executed, and finalized before the next one starts.
  * - "parallel": tool calls are prepared sequentially, then allowed tools execute concurrently.
- *   `tool_execution_end` is emitted in tool completion order after each tool is finalized,
- *   while tool-result message artifacts are emitted later in assistant source order.
+ *   Final observations, `tool_execution_end`, and tool-result artifacts are emitted
+ *   in assistant source order after concurrent execution settles.
  */
 export type ToolExecutionMode = "sequential" | "parallel";
 
@@ -48,6 +49,78 @@ export type ToolExecutionMode = "sequential" | "parallel";
  * - "one-at-a-time": drain and inject only the oldest queued message, leaving the rest queued for later drain points.
  */
 export type QueueMode = "all" | "one-at-a-time";
+
+/** External side-effect categories admitted by the agent loop. */
+export type EffectKind = "provider_request" | "tool" | "compaction_request" | "deferred_fetch";
+
+/** Stable reference assigned before an external side effect starts. */
+export interface EffectRef {
+	effectId: string;
+	kind: EffectKind;
+	taskRunId: string;
+	sequence: number;
+}
+
+/** Minimal pause reference returned by a request admission hook. */
+export interface EffectPause {
+	pauseId: string;
+}
+
+/** Synchronous decision made immediately before an external side effect. */
+export type EffectAdmission =
+	| { kind: "admitted"; effect: EffectRef; permitId?: string }
+	| { kind: "paused"; pause: EffectPause }
+	| { kind: "cancelled"; reason: "user_abort" | "operation_cancelled" };
+
+/** Tool gates can request a replan provider turn without pausing the task. */
+export type ToolEffectAdmission = EffectAdmission | { kind: "replan_required"; reason?: string };
+
+/** Context passed to the provider request admission hook. */
+export interface BeforeRequestContext {
+	effect: EffectRef;
+	model: { provider: string; id: string };
+	/** Versioned convergence snapshot. */
+	taskSnapshot?: ConvergenceTaskSnapshot;
+}
+
+/** Context for the atomic gate executed in the same synchronous stack as tool dispatch. */
+export interface BeforeToolEffectContext {
+	effect: EffectRef;
+	assistantMessage: AssistantMessage;
+	toolCall: AgentToolCall;
+	/** Effective arguments after extension mutation and core re-validation. */
+	args: unknown;
+	context: AgentContext;
+	taskSnapshot?: ConvergenceTaskSnapshot;
+}
+
+/** Result of committing a source-ordered, finalized tool observation. */
+export type ToolObservationDisposition =
+	| { kind: "continue" }
+	| { kind: "replan_required" }
+	| { kind: "paused"; pause: EffectPause }
+	| { kind: "cancelled"; reason: "user_abort" | "operation_cancelled" };
+
+/** Typed reason why the low-level loop stopped. */
+export type AgentLoopExit =
+	| { kind: "completed" }
+	| { kind: "paused"; pauseId: string }
+	| { kind: "cancelled"; reason: "user_abort" | "operation_cancelled" };
+
+/** Complete low-level loop result used by outcome-aware callers. */
+export interface AgentLoopResult {
+	messages: AgentMessage[];
+	exit: AgentLoopExit;
+}
+
+/** Additive lifecycle outcome shared by Agent and session event projections. */
+export type AgentRunOutcome =
+	| { kind: "completed" }
+	| { kind: "paused"; pauseId: string }
+	| { kind: "aborted" }
+	| { kind: "failed" };
+
+export type AgentRunOutcomeKind = AgentRunOutcome["kind"];
 
 /** A single tool call content block emitted by an assistant message. */
 export type AgentToolCall = Extract<AssistantMessage["content"][number], { type: "toolCall" }>;
@@ -148,6 +221,28 @@ export interface PrepareNextTurnContext extends ShouldStopAfterTurnContext {}
 
 export interface AgentLoopConfig extends SimpleStreamOptions {
 	model: Model<any>;
+	/** Stable task identifier used when the caller does not provide an effect factory. */
+	taskRunId?: string;
+	/** Optional caller-owned source of effect references. */
+	createEffectRef?: (kind: EffectKind) => EffectRef;
+	/** Versioned policy snapshot forwarded to admission hooks without interpretation. */
+	taskSnapshot?: ConvergenceTaskSnapshot;
+	/**
+	 * Synchronous provider admission hook. It runs after context conversion and
+	 * API-key resolution, immediately before stream dispatch.
+	 */
+	beforeRequest?: (context: BeforeRequestContext, signal?: AbortSignal) => EffectAdmission;
+	/** Optional caller-owned observation sequence, shared across loop continuations. */
+	nextToolObservationSequence?: () => number;
+	/**
+	 * Atomic tool-effect gate. The loop invokes it synchronously immediately before
+	 * `tool.execute()`; returning paused/cancelled never starts the external effect.
+	 */
+	beforeToolEffect?: (context: BeforeToolEffectContext, signal?: AbortSignal) => ToolEffectAdmission;
+	/** Commit final tool outcomes in assistant source order after result normalization. */
+	observeToolOutcome?: (
+		observation: ToolOutcomeObservation,
+	) => ToolObservationDisposition | undefined | Promise<ToolObservationDisposition | undefined>;
 
 	/**
 	 * Converts AgentMessage[] to LLM-compatible Message[] before each LLM call.
@@ -260,8 +355,7 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
 	 * Tool execution mode.
 	 * - "sequential": execute tool calls one by one
 	 * - "parallel": preflight tool calls sequentially, then execute allowed tools concurrently;
-	 *   emit `tool_execution_end` in tool completion order after each tool is finalized,
-	 *   then emit tool-result message artifacts later in assistant source order
+	 *   commit observations and emit finalized tool events in assistant source order
 	 *
 	 * Default: "parallel"
 	 */
@@ -428,7 +522,7 @@ export interface AgentContext {
 export type AgentEvent =
 	// Agent lifecycle
 	| { type: "agent_start" }
-	| { type: "agent_end"; messages: AgentMessage[] }
+	| { type: "agent_end"; messages: AgentMessage[]; outcome?: AgentRunOutcomeKind; pauseId?: string }
 	// Turn lifecycle - a turn is one assistant response + any tool calls/results
 	| { type: "turn_start" }
 	| { type: "turn_end"; message: AgentMessage; toolResults: ToolResultMessage[] }
@@ -437,7 +531,10 @@ export type AgentEvent =
 	// Only emitted for assistant messages during streaming
 	| { type: "message_update"; message: AgentMessage; assistantMessageEvent: AssistantMessageEvent }
 	| { type: "message_end"; message: AgentMessage }
-	// Tool execution lifecycle
+	// External side-effect lifecycle. These events are emitted only when an admission hook is installed.
+	| { type: "external_effect_start"; effect: EffectRef }
+	| { type: "external_effect_end"; effect: EffectRef; outcome: "completed" | "error" | "cancelled" }
+	// Tool-call lifecycle. Start means preparation began; only external_effect_start proves dispatch.
 	| { type: "tool_execution_start"; toolCallId: string; toolName: string; args: any }
 	| { type: "tool_execution_update"; toolCallId: string; toolName: string; args: any; partialResult: any }
 	| { type: "tool_execution_end"; toolCallId: string; toolName: string; result: any; isError: boolean };

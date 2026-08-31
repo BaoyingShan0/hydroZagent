@@ -7,7 +7,7 @@ import type {
 	ThinkingBudgets,
 	Transport,
 } from "@earendil-works/pi-ai";
-import { runAgentLoop, runAgentLoopContinue } from "./agent-loop.ts";
+import { runAgentLoopContinueWithOutcome, runAgentLoopWithOutcome } from "./agent-loop.ts";
 import { getDefaultStreamFn } from "./stream-fn.ts";
 import type {
 	AfterToolCallContext,
@@ -15,12 +15,18 @@ import type {
 	AgentContext,
 	AgentEvent,
 	AgentLoopConfig,
+	AgentLoopResult,
 	AgentLoopTurnUpdate,
 	AgentMessage,
+	AgentRunOutcome,
 	AgentState,
 	AgentTool,
+	BeforeRequestContext,
 	BeforeToolCallContext,
 	BeforeToolCallResult,
+	EffectAdmission,
+	EffectKind,
+	EffectRef,
 	PrepareNextTurnContext,
 	QueueMode,
 	ShouldStopAfterTurnContext,
@@ -101,6 +107,13 @@ export interface AgentOptions {
 	transformContext?: (messages: AgentMessage[], signal?: AbortSignal) => Promise<AgentMessage[]>;
 	streamFn: StreamFn;
 	getApiKey?: (provider: string) => Promise<string | undefined> | string | undefined;
+	beforeRequest?: (context: BeforeRequestContext, signal?: AbortSignal) => EffectAdmission;
+	nextToolObservationSequence?: AgentLoopConfig["nextToolObservationSequence"];
+	beforeToolEffect?: AgentLoopConfig["beforeToolEffect"];
+	observeToolOutcome?: AgentLoopConfig["observeToolOutcome"];
+	createEffectRef?: (kind: EffectKind) => EffectRef;
+	taskRunId?: string;
+	taskSnapshot?: AgentLoopConfig["taskSnapshot"];
 	onPayload?: SimpleStreamOptions["onPayload"];
 	onResponse?: SimpleStreamOptions["onResponse"];
 	beforeToolCall?: (context: BeforeToolCallContext, signal?: AbortSignal) => Promise<BeforeToolCallResult | undefined>;
@@ -180,6 +193,13 @@ export class Agent {
 	public transformContext?: (messages: AgentMessage[], signal?: AbortSignal) => Promise<AgentMessage[]>;
 	public streamFunction: StreamFn;
 	public getApiKey?: (provider: string) => Promise<string | undefined> | string | undefined;
+	public beforeRequest?: (context: BeforeRequestContext, signal?: AbortSignal) => EffectAdmission;
+	public nextToolObservationSequence?: AgentLoopConfig["nextToolObservationSequence"];
+	public beforeToolEffect?: AgentLoopConfig["beforeToolEffect"];
+	public observeToolOutcome?: AgentLoopConfig["observeToolOutcome"];
+	public createEffectRef?: (kind: EffectKind) => EffectRef;
+	public taskRunId?: string;
+	public taskSnapshot?: AgentLoopConfig["taskSnapshot"];
 	public onPayload?: SimpleStreamOptions["onPayload"];
 	public onResponse?: SimpleStreamOptions["onResponse"];
 	public beforeToolCall?: (
@@ -221,6 +241,13 @@ export class Agent {
 		this.transformContext = runtimeOptions.transformContext;
 		this.streamFunction = runtimeOptions.streamFn ?? getDefaultStreamFn();
 		this.getApiKey = runtimeOptions.getApiKey;
+		this.beforeRequest = runtimeOptions.beforeRequest;
+		this.nextToolObservationSequence = runtimeOptions.nextToolObservationSequence;
+		this.beforeToolEffect = runtimeOptions.beforeToolEffect;
+		this.observeToolOutcome = runtimeOptions.observeToolOutcome;
+		this.createEffectRef = runtimeOptions.createEffectRef;
+		this.taskRunId = runtimeOptions.taskRunId;
+		this.taskSnapshot = runtimeOptions.taskSnapshot;
 		this.onPayload = runtimeOptions.onPayload;
 		this.onResponse = runtimeOptions.onResponse;
 		this.beforeToolCall = runtimeOptions.beforeToolCall;
@@ -348,17 +375,36 @@ export class Agent {
 	async prompt(message: AgentMessage | AgentMessage[]): Promise<void>;
 	async prompt(input: string, images?: ImageContent[]): Promise<void>;
 	async prompt(input: string | AgentMessage | AgentMessage[], images?: ImageContent[]): Promise<void> {
+		await this.promptWithOutcome(input, images);
+	}
+
+	/** Start a new prompt and return its typed lifecycle outcome. */
+	async promptWithOutcome(message: AgentMessage | AgentMessage[]): Promise<AgentRunOutcome>;
+	async promptWithOutcome(input: string, images?: ImageContent[]): Promise<AgentRunOutcome>;
+	async promptWithOutcome(
+		input: string | AgentMessage | AgentMessage[],
+		images?: ImageContent[],
+	): Promise<AgentRunOutcome>;
+	async promptWithOutcome(
+		input: string | AgentMessage | AgentMessage[],
+		images?: ImageContent[],
+	): Promise<AgentRunOutcome> {
 		if (this.activeRun) {
 			throw new Error(
 				"Agent is already processing a prompt. Use steer() or followUp() to queue messages, or wait for completion.",
 			);
 		}
 		const messages = this.normalizePromptInput(input, images);
-		await this.runPromptMessages(messages);
+		return await this.runPromptMessages(messages);
 	}
 
 	/** Continue from the current transcript. The last message must be a user or tool-result message. */
 	async continue(): Promise<void> {
+		await this.continueWithOutcome();
+	}
+
+	/** Continue from the current transcript and return its typed lifecycle outcome. */
+	async continueWithOutcome(): Promise<AgentRunOutcome> {
 		if (this.activeRun) {
 			throw new Error("Agent is already processing. Wait for completion before continuing.");
 		}
@@ -371,20 +417,18 @@ export class Agent {
 		if (lastMessage.role === "assistant") {
 			const queuedSteering = this.steeringQueue.drain();
 			if (queuedSteering.length > 0) {
-				await this.runPromptMessages(queuedSteering, { skipInitialSteeringPoll: true });
-				return;
+				return await this.runPromptMessages(queuedSteering, { skipInitialSteeringPoll: true });
 			}
 
 			const queuedFollowUps = this.followUpQueue.drain();
 			if (queuedFollowUps.length > 0) {
-				await this.runPromptMessages(queuedFollowUps);
-				return;
+				return await this.runPromptMessages(queuedFollowUps);
 			}
 
 			throw new Error("Cannot continue from message role: assistant");
 		}
 
-		await this.runContinuation();
+		return await this.runContinuation();
 	}
 
 	private normalizePromptInput(
@@ -409,9 +453,9 @@ export class Agent {
 	private async runPromptMessages(
 		messages: AgentMessage[],
 		options: { skipInitialSteeringPoll?: boolean } = {},
-	): Promise<void> {
-		await this.runWithLifecycle(async (signal) => {
-			await runAgentLoop(
+	): Promise<AgentRunOutcome> {
+		return await this.runWithLifecycle(async (signal) => {
+			const result = await runAgentLoopWithOutcome(
 				messages,
 				this.createContextSnapshot(),
 				this.createLoopConfig(options),
@@ -419,19 +463,34 @@ export class Agent {
 				signal,
 				this.streamFunction,
 			);
+			return this.toRunOutcome(result);
 		});
 	}
 
-	private async runContinuation(): Promise<void> {
-		await this.runWithLifecycle(async (signal) => {
-			await runAgentLoopContinue(
+	private async runContinuation(): Promise<AgentRunOutcome> {
+		return await this.runWithLifecycle(async (signal) => {
+			const result = await runAgentLoopContinueWithOutcome(
 				this.createContextSnapshot(),
 				this.createLoopConfig(),
 				(event) => this.processEvents(event),
 				signal,
 				this.streamFunction,
 			);
+			return this.toRunOutcome(result);
 		});
+	}
+
+	private toRunOutcome(result: AgentLoopResult): AgentRunOutcome {
+		if (result.exit.kind === "paused") return { kind: "paused", pauseId: result.exit.pauseId };
+		if (result.exit.kind === "cancelled") return { kind: "aborted" };
+		for (let index = result.messages.length - 1; index >= 0; index--) {
+			const message = result.messages[index];
+			if (message.role !== "assistant") continue;
+			if (message.stopReason === "error") return { kind: "failed" };
+			if (message.stopReason === "aborted") return { kind: "aborted" };
+			break;
+		}
+		return { kind: "completed" };
 	}
 
 	private createContextSnapshot(): AgentContext {
@@ -447,6 +506,13 @@ export class Agent {
 		const shouldStopAfterTurn = this.shouldStopAfterTurn;
 		return {
 			model: this._state.model,
+			taskRunId: this.taskRunId ?? this.sessionId,
+			createEffectRef: this.createEffectRef,
+			taskSnapshot: this.taskSnapshot,
+			beforeRequest: this.beforeRequest,
+			nextToolObservationSequence: this.nextToolObservationSequence,
+			beforeToolEffect: this.beforeToolEffect,
+			observeToolOutcome: this.observeToolOutcome,
 			reasoning: this._state.thinkingLevel === "off" ? undefined : this._state.thinkingLevel,
 			sessionId: this.sessionId,
 			onPayload: this.onPayload,
@@ -483,7 +549,9 @@ export class Agent {
 		};
 	}
 
-	private async runWithLifecycle(executor: (signal: AbortSignal) => Promise<void>): Promise<void> {
+	private async runWithLifecycle(
+		executor: (signal: AbortSignal) => Promise<AgentRunOutcome>,
+	): Promise<AgentRunOutcome> {
 		if (this.activeRun) {
 			throw new Error("Agent is already processing.");
 		}
@@ -500,15 +568,15 @@ export class Agent {
 		this._state.errorMessage = undefined;
 
 		try {
-			await executor(abortController.signal);
+			return await executor(abortController.signal);
 		} catch (error) {
-			await this.handleRunFailure(error, abortController.signal.aborted);
+			return await this.handleRunFailure(error, abortController.signal.aborted);
 		} finally {
 			this.finishRun();
 		}
 	}
 
-	private async handleRunFailure(error: unknown, aborted: boolean): Promise<void> {
+	private async handleRunFailure(error: unknown, aborted: boolean): Promise<AgentRunOutcome> {
 		const failureMessage = {
 			role: "assistant",
 			content: [{ type: "text", text: "" }],
@@ -523,7 +591,12 @@ export class Agent {
 		await this.processEvents({ type: "message_start", message: failureMessage });
 		await this.processEvents({ type: "message_end", message: failureMessage });
 		await this.processEvents({ type: "turn_end", message: failureMessage, toolResults: [] });
-		await this.processEvents({ type: "agent_end", messages: [failureMessage] });
+		await this.processEvents({
+			type: "agent_end",
+			messages: [failureMessage],
+			outcome: aborted ? "aborted" : "failed",
+		});
+		return { kind: aborted ? "aborted" : "failed" };
 	}
 
 	private finishRun(): void {

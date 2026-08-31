@@ -1,0 +1,14 @@
+{
+	"schemaVersion": 1,
+	"controllerVersion": "convergence-controller-v1",
+	"canonicalizerVersion": "canonical-json-v1",
+	"hashAlgorithm": "sha256",
+	"id": "test-rerun",
+	"description": "One failed test followed by a successful rerun is recoverable progress.",
+	"sourceKind": "synthetic_negative",
+	"observations": [
+		{ "sequence": 1, "relativeMs": 0, "kind": "tool_outcome", "toolName": "test", "callHash": "sha256:3111111111111111111111111111111111111111111111111111111111111111", "outcome": "tool_error", "errorClass": "tool_error", "resultHash": "sha256:3aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "usage": { "input": 100, "output": 10, "cacheRead": 0, "cacheWrite": 0 } },
+		{ "sequence": 2, "relativeMs": 500, "kind": "tool_outcome", "toolName": "test", "callHash": "sha256:3111111111111111111111111111111111111111111111111111111111111111", "outcome": "success", "resultHash": "sha256:3bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "usage": { "input": 110, "output": 10, "cacheRead": 0, "cacheWrite": 0 } }
+	],
+	"expectations": [{ "type": "no_pause_before", "sequence": 2 }]
+}

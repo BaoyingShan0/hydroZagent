@@ -10,6 +10,7 @@
 
 import type {
 	AgentMessage,
+	AgentRunOutcomeKind,
 	AgentToolResult,
 	AgentToolUpdateCallback,
 	ThinkingLevel,
@@ -717,11 +718,15 @@ export interface AgentStartEvent {
 export interface AgentEndEvent {
 	type: "agent_end";
 	messages: AgentMessage[];
+	outcome?: AgentRunOutcomeKind;
+	pauseId?: string;
 }
 
 /** Fired after an agent run has fully settled and no automatic retry, compaction, or queued continuation will run. */
 export interface AgentSettledEvent {
 	type: "agent_settled";
+	outcome?: AgentRunOutcomeKind;
+	pauseId?: string;
 }
 
 /** Fired at the start of each turn */
@@ -899,7 +904,8 @@ export interface CustomToolCallEvent extends ToolCallEventBase {
  * Fired before a tool executes. Can block.
  *
  * `event.input` is mutable. Mutate it in place to patch tool arguments before execution.
- * Later `tool_call` handlers see earlier mutations. No re-validation is performed after mutation.
+ * Later `tool_call` handlers see earlier mutations. Agent core re-validates the final
+ * effective input against the tool schema before effect admission and execution.
  */
 export type ToolCallEvent =
 	| BashToolCallEvent

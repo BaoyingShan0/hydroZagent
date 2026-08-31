@@ -1,0 +1,13 @@
+{
+	"schemaVersion": 1,
+	"controllerVersion": "convergence-controller-v1",
+	"canonicalizerVersion": "canonical-json-v1",
+	"hashAlgorithm": "sha256",
+	"id": "long-command",
+	"description": "A single long-running command settles successfully without implying repetition.",
+	"sourceKind": "synthetic_negative",
+	"observations": [
+		{ "sequence": 1, "relativeMs": 120000, "kind": "tool_outcome", "toolName": "bash", "callHash": "sha256:5111111111111111111111111111111111111111111111111111111111111111", "outcome": "success", "resultHash": "sha256:5aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "usage": { "input": 100, "output": 10, "cacheRead": 0, "cacheWrite": 0 } }
+	],
+	"expectations": [{ "type": "no_pause_before", "sequence": 1 }]
+}

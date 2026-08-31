@@ -441,7 +441,7 @@ describe("agentLoop with AgentMessage", () => {
 		expect(messages[messages.length - 1].role).toBe("assistant");
 	});
 
-	it("should execute mutated beforeToolCall args without revalidation", async () => {
+	it("should revalidate mutated beforeToolCall args before execution", async () => {
 		const toolSchema = Type.Object({ value: Type.String() });
 		const executed: Array<string | number> = [];
 		const tool: AgentTool<typeof toolSchema, { value: string | number }> = {
@@ -500,7 +500,7 @@ describe("agentLoop with AgentMessage", () => {
 			// consume
 		}
 
-		expect(executed).toEqual([123]);
+		expect(executed).toEqual(["123"]);
 	});
 
 	it("should prepare tool arguments for validation", async () => {
@@ -583,7 +583,7 @@ describe("agentLoop with AgentMessage", () => {
 		expect(executed).toEqual([[{ oldText: "before", newText: "after" }]]);
 	});
 
-	it("should emit tool_execution_end in completion order but persist tool results in source order", async () => {
+	it("should observe and emit finalized parallel tool outcomes in source order", async () => {
 		const toolSchema = Type.Object({ value: Type.String() });
 		let firstResolved = false;
 		let parallelObserved = false;
@@ -673,7 +673,7 @@ describe("agentLoop with AgentMessage", () => {
 		});
 
 		expect(parallelObserved).toBe(true);
-		expect(toolExecutionEndIds).toEqual(["tool-2", "tool-1"]);
+		expect(toolExecutionEndIds).toEqual(["tool-1", "tool-2"]);
 		expect(toolResultIds).toEqual(["tool-1", "tool-2"]);
 		expect(turnToolResultIds).toEqual(["tool-1", "tool-2"]);
 	});

@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"controllerVersion": "convergence-controller-v1",
+	"canonicalizerVersion": "canonical-json-v1",
+	"hashAlgorithm": "sha256",
+	"cases": [
+		{ "id": "incident-repeated-failing-search", "file": "incident-repeated-failing-search.json" },
+		{ "id": "bounded-polling", "file": "bounded-polling.json" },
+		{ "id": "pagination", "file": "pagination.json" },
+		{ "id": "test-rerun", "file": "test-rerun.json" },
+		{ "id": "progressive-search", "file": "progressive-search.json" },
+		{ "id": "long-command", "file": "long-command.json" },
+		{ "id": "parallel-read", "file": "parallel-read.json" }
+	]
+}

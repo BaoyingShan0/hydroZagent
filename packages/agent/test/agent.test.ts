@@ -401,6 +401,7 @@ describe("Agent", () => {
 		};
 		const agent = new Agent({
 			initialState: { tools: [settledTool, slowTool] },
+			beforeToolEffect: ({ effect }) => ({ kind: "admitted", effect }),
 			streamFn: () => {
 				const stream = new MockAssistantStream();
 				queueMicrotask(() => {
@@ -418,7 +419,7 @@ describe("Agent", () => {
 		});
 		agent.subscribe((event) => {
 			events.push(event);
-			if (event.type === "tool_execution_end" && event.toolCallId === "call-1") {
+			if (event.type === "external_effect_end") {
 				settledToolEnded.resolve();
 			}
 		});

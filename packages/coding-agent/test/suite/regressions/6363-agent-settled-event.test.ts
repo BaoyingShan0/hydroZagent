@@ -33,11 +33,11 @@ describe("regression #6363: agent settled event and idle waiting", () => {
 			settings: { retry: { enabled: true, maxRetries: 3, baseDelayMs: 1 } },
 			extensionFactories: [
 				(pi) => {
-					pi.on("agent_end", () => {
-						extensionEvents.push("agent_end");
+					pi.on("agent_end", (event) => {
+						extensionEvents.push(`agent_end:${event.outcome}`);
 					});
-					pi.on("agent_settled", (_event, ctx) => {
-						extensionEvents.push(`agent_settled:${ctx.isIdle()}`);
+					pi.on("agent_settled", (event, ctx) => {
+						extensionEvents.push(`agent_settled:${event.outcome}:${ctx.isIdle()}`);
 					});
 				},
 			],
@@ -45,7 +45,7 @@ describe("regression #6363: agent settled event and idle waiting", () => {
 		harnesses.push(harness);
 		harness.session.subscribe((event) => {
 			if (event.type === "agent_settled") {
-				publicEvents.push("agent_settled");
+				publicEvents.push(`agent_settled:${event.outcome}`);
 			}
 		});
 		harness.setResponses([
@@ -56,9 +56,10 @@ describe("regression #6363: agent settled event and idle waiting", () => {
 		await harness.session.prompt("test");
 
 		expect(harness.eventsOfType("agent_end").map((event) => event.willRetry)).toEqual([true, false]);
+		expect(harness.eventsOfType("agent_end").map((event) => event.outcome)).toEqual(["failed", "completed"]);
 		expect(harness.eventsOfType("agent_settled")).toHaveLength(1);
-		expect(extensionEvents).toEqual(["agent_end", "agent_end", "agent_settled:true"]);
-		expect(publicEvents).toEqual(["agent_settled"]);
+		expect(extensionEvents).toEqual(["agent_end:failed", "agent_end:completed", "agent_settled:completed:true"]);
+		expect(publicEvents).toEqual(["agent_settled:completed"]);
 	});
 
 	it("settles only after follow-ups queued by agent_end handlers run", async () => {
