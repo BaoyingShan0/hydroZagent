@@ -1,14 +1,10 @@
-<p align="center">
-  <img src="apps/desktop/build/icon.svg" width="112" alt="浙水智能体标志">
-</p>
+# 浙水智能体 hydroZagent
 
-<h1 align="center">浙水智能体 hydroZagent</h1>
-
-<p align="center">AI 赋能水利 · 智慧守护江河</p>
+AI 赋能水利 · 智慧守护江河
 
 ## 产品定位
 
-HydroZAgent 是面向水利单位内网的综合业务智能体，coding 是重要能力之一，同时承担水利专业、办公生产、数据分析、系统运营和知识服务。它以pi为底座来开发。
+HydroZAgent 是面向水利单位内网的综合业务智能体，coding 是重要能力之一，同时承担水利专业、办公生产、数据分析、系统运营、知识服务等。HydroZAgent 以pi为底座来开发。
 
 ## 开发目标
 
@@ -20,17 +16,19 @@ HydroZAgent 是面向水利单位内网的综合业务智能体，coding 是重�
 
 ## 产品组成
 
-| 层级 | 目录 | 职责 |
-|---|---|---|
-| 用户入口 | [`apps/desktop`](apps/desktop) | Electron 桌面工作台、项目和会话管理、水利品牌 UI、内网 Web 服务 |
-| Agent 运行时 | [`packages/coding-agent`](packages/coding-agent) | 工具调用、会话执行、技能与扩展 |
-| 模型与协议 | [`packages/ai`](packages/ai)、[`packages/agent`](packages/agent)、[`packages/protocol`](packages/protocol) | 模型接入、Agent 状态机与通信协议 |
-| 服务能力 | [`packages/server`](packages/server)、[`packages/client`](packages/client) | 服务端与客户端通信基础 |
+
+| 层级        | 目录                                                                                                       | 职责                                       |
+| --------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| 用户入口      | `[apps/desktop](apps/desktop)`                                                                           | Electron 桌面工作台、项目和会话管理、水利品牌 UI、内网 Web 服务 |
+| Agent 运行时 | `[packages/coding-agent](packages/coding-agent)`                                                         | 工具调用、会话执行、技能与扩展                          |
+| 模型与协议     | `[packages/ai](packages/ai)`、`[packages/agent](packages/agent)`、`[packages/protocol](packages/protocol)` | 模型接入、Agent 状态机与通信协议                      |
+| 服务能力      | `[packages/server](packages/server)`、`[packages/client](packages/client)`                                | 服务端与客户端通信基础                              |
+
 
 开发模式下，桌面端优先使用本仓库构建出的 `packages/coding-agent/dist/cli.js`。正式分发时，`desktop:dist` 会先构建当前平台的 Agent 可执行文件，再将它打进桌面应用，因此用户无需另外安装全局 `pi`。
 
-详细边界见 [`docs/product-architecture.md`](docs/product-architecture.md)。
-品牌视觉基准见 [`docs/brand/浙水智能体整体设计方案.png`](docs/brand/浙水智能体整体设计方案.png)。
+详细边界见 `[docs/product-architecture.md](docs/product-architecture.md)`。
+品牌视觉基准见 `[docs/brand/浙水智能体整体设计方案.png](docs/brand/浙水智能体整体设计方案.png)`。
 
 ## 开发
 
@@ -54,12 +52,16 @@ npm run desktop:test      # 运行桌面端测试
 npm run desktop:dist      # 构建包含 Agent 运行时的完整桌面发行版
 ```
 
+
+
 ## 当前水利适配
 
 - 统一品牌名称、徽标、启动页和青碧朱砂视觉主题。
 - 补充水文、水情、雨情、流量、水位、水库、河网、防汛和预警等中英文词条。
 - 保留局域网 Web 服务，支持内网共享会话。
 - 默认仅使用 Pi Agent 运行链路；DSH 和桌宠不进入产品入口与默认运行时。
+
+
 
 ## 开源说明
 
