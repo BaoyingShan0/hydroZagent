@@ -201,7 +201,7 @@
     color-mix(in srgb, var(--color-brand-blue) 48%, transparent) 52%,
     transparent 100%
   );
-  /* boot 页品牌 logo 底色：与 build/icon.svg 图标同一套黑渐变，不跟随主题色 */
+  /* boot 页品牌 logo 底色：与系统图标同一套品牌底，不跟随主题色 */
   --logo-boot-gradient: linear-gradient(145deg, #365763, #4f8290 62%, #6fafc0);
   --logo-mark-gradient: linear-gradient(
     145deg,

@@ -1,7 +1,12 @@
 <!doctype html>
 <!-- 品牌基线：首帧即挂 classic-green 外观，避免 React/设置回填前退回 foundation 浅色默认
      （深青侧栏、品牌文本墨色等全失效）。App 挂载后 applyAppearanceAttributes 会按用户设置覆盖。 -->
-<html lang="zh-CN" data-appearance="classic-green" data-theme="light" data-accent="default">
+<html
+  lang="zh-CN"
+  data-appearance="classic-green"
+  data-theme="light"
+  data-accent="default"
+>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -58,21 +63,16 @@
         animation: boot-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
       }
 
-      .boot-logo {
-        position: relative;
-        width: 72px;
-        height: 72px;
-        display: grid;
-        place-items: center;
-        border-radius: 22%;
-        background: transparent;
-        box-shadow: 0 2px 8px color-mix(in srgb, #000 8%, transparent);
-        ring: 1px color-mix(in srgb, #fff 30%, transparent);
-      }
-      .boot-logo svg {
-        width: 72px;
-        height: 72px;
-        border-radius: 22%;
+      /* 启动页 logo：与新建对话页 HydroWelcomeHeader 同源同参数
+         （148px / max-w-44vw / object-contain / mix-blend-mode: multiply），
+         直接复用 hydrozagent-logo.png 小机器人主标。 */
+      .boot-logo-img {
+        width: 148px;
+        max-width: 44vw;
+        height: auto;
+        object-fit: contain;
+        mix-blend-mode: multiply;
+        user-select: none;
       }
 
       .boot-title {
@@ -99,6 +99,23 @@
         text-transform: uppercase;
         font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
         line-height: 1;
+      }
+
+      /* 版权署名：贴底居中、弱化处理，随品牌区一起上浮出现。 */
+      .boot-copyright {
+        position: absolute;
+        inset-inline: 0;
+        bottom: 20px;
+        z-index: 1;
+        padding: 0 16px;
+        text-align: center;
+        color: color-mix(in srgb, var(--hydro-qing) 45%, transparent);
+        font-size: 11px;
+        font-weight: 400;
+        letter-spacing: 0.04em;
+        line-height: 1.5;
+        font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+        animation: boot-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) 160ms both;
       }
 
       .boot-progress {
@@ -179,14 +196,13 @@
         aria-hidden="true"
       />
       <div class="boot-brand">
-        <div class="boot-logo">
-          <svg viewBox="0 0 120 120" aria-hidden="true">
-            <rect width="120" height="120" rx="28" fill="#5b6a76"/>
-            <path d="M60 18c-13 18-29 34-29 54a29 29 0 0 0 58 0c0-20-16-36-29-54Z" fill="none" stroke="#f7f8f7" stroke-width="5" stroke-linejoin="round"/>
-            <path d="M40 61c9-7 18-7 27 0s18 7 27 0M36 73c10-7 20-7 30 0s20 7 30 0M41 85c8-5 16-5 24 0s16 5 24 0" fill="none" stroke="#f7f8f7" stroke-width="5" stroke-linecap="round"/>
-            <circle cx="60" cy="45" r="4" fill="#c94f45"/>
-          </svg>
-        </div>
+        <img
+          class="boot-logo-img"
+          src="/src/assets/brand/hydrozagent-logo.png"
+          alt=""
+          aria-hidden="true"
+          draggable="false"
+        />
         <strong class="boot-title">浙水智能体</strong>
         <span class="boot-subtitle">AI 赋能水利 · 智慧守护江河</span>
         <span class="boot-brand-name">hydrozagent</span>
@@ -194,6 +210,7 @@
       <div class="boot-progress" aria-hidden="true">
         <div class="boot-progress-bar"></div>
       </div>
+      <span class="boot-copyright">© 2026 浙江省水利河口研究院（浙江省海洋规划设计研究院）</span>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -5,19 +5,18 @@ const { Icns, IcnsImage } = require('@fiahfy/icns');
 const pngToIcoModule = require('png-to-ico');
 const pngToIco = pngToIcoModule.default ?? pngToIcoModule;
 
-// 打包标必须是矢量 hydroZagent 水纹标（与 LogoMark / 启动画面同源）。
-// 嵌 PNG 会在小尺寸糊、圆角漏白，因此保留矢量门禁。
-const svg = fs.readFileSync(path.join(__dirname, '..', 'build', 'icon.svg'), 'utf8');
-if (svg.includes('data:image/png')) {
-  throw new Error('build/icon.svg must stay a vector mark; do not embed a PNG');
-}
-if (!svg.includes('hydro-bg') || !svg.includes('#c94f45')) {
-  throw new Error('build/icon.svg must keep the hydroZagent water mark geometry');
+// 品牌统一：所有图标与应用内品牌标都源自同一枚浙水智能体主标（swoosh + 小机器人）。
+// 主标是横版透明 PNG；小尺寸方形图标里直接铺满会糊、透明浅色部分在浅底上会发虚，
+// 因此统一「白底圆角整标」构图：裁掉透明边 → 居中缩放 → 白底方块 → 圆角遮罩。
+const master = path.join(__dirname, '..', 'build', 'brand', 'logo.png');
+if (!fs.existsSync(master)) {
+  throw new Error(`missing brand master ${master}; put the HydroZagent logo there first`);
 }
 
 const out = path.join(__dirname, '..', 'build');
 const iconsDir = path.join(out, 'icons');
-const iconContentRatio = 0.875;
+const rendererAssets = path.join(__dirname, '..', 'src', 'renderer', 'src', 'assets');
+const rendererBrand = path.join(rendererAssets, 'brand');
 const pngSizes = [16, 24, 32, 48, 64, 128, 256, 512, 1024];
 const icnsSources = [
   [16, 'icp4'],
@@ -33,33 +32,57 @@ const icnsSources = [
   [1024, 'ic10'],
 ];
 
-async function renderPng(size, target) {
-  let innerSize = Math.max(1, Math.round(size * iconContentRatio));
-  if (innerSize > 1) innerSize -= innerSize % 2;
-  const icon = await sharp(Buffer.from(svg))
-    .resize(innerSize, innerSize)
-    .png()
-    .toBuffer();
+// 裁掉主标四周透明边，避免居中时被大片透明留白挤小。缓存一次，全尺寸复用。
+let trimmedLogoPromise = null;
+function trimmedLogo() {
+  trimmedLogoPromise ??= sharp(master)
+    .ensureAlpha()
+    .trim({ threshold: 12 })
+    .toBuffer({ resolveWithObject: true });
+  return trimmedLogoPromise;
+}
 
-  // Dock/Finder 会优先使用 icns 内的小尺寸图；如果小尺寸直接铺满画布，
-  // 视觉上会比系统应用图标大一圈。所有平台图标都统一保留 6.25% 留白。
-  await sharp({
+/**
+ * 白底方形品牌标。
+ * @param size 输出边长
+ * @param rounded 是否烘焙圆角（系统图标要，渲染层交给 CSS rounded-* 不烘焙）
+ * @param contentRatio 主标内容占方块的比例（图标留白多一点更像 app icon，内联标铺满一点）
+ */
+async function buildTile(size, { rounded, contentRatio }) {
+  const { data, info } = await trimmedLogo();
+  const box = Math.max(1, Math.round(size * contentRatio));
+  const scale = Math.min(box / info.width, box / info.height);
+  const w = Math.max(1, Math.round(info.width * scale));
+  const h = Math.max(1, Math.round(info.height * scale));
+  const logo = await sharp(data).resize(w, h).png().toBuffer();
+
+  let tile = await sharp({
     create: {
       width: size,
       height: size,
       channels: 4,
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
+      background: { r: 255, g: 255, b: 255, alpha: 1 },
     },
   })
     .composite([
       {
-        input: icon,
-        left: Math.floor((size - innerSize) / 2),
-        top: Math.floor((size - innerSize) / 2),
+        input: logo,
+        left: Math.round((size - w) / 2),
+        top: Math.round((size - h) / 2),
       },
     ])
     .png()
-    .toFile(target);
+    .toBuffer();
+
+  if (rounded) {
+    const radius = Math.round(size * 0.22);
+    const mask = Buffer.from(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><rect width="${size}" height="${size}" rx="${radius}" ry="${radius}" fill="#fff"/></svg>`,
+    );
+    tile = await sharp(tile).composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer();
+  }
+
+  return tile;
 }
 
 async function writeIcns(target) {
@@ -79,13 +102,14 @@ async function writeIcns(target) {
 
 async function main() {
   fs.mkdirSync(iconsDir, { recursive: true });
-  fs.writeFileSync(path.join(out, 'icon.svg'), svg);
+  fs.mkdirSync(rendererBrand, { recursive: true });
 
-  // electron-builder 在 Linux 下会从 build/icons 读取多尺寸 PNG；
-  // Windows 安装包需要 .ico，macOS 需要 .icns。显式生成这些格式，
-  // 避免只存在 SVG 时各平台回退到默认 Electron 图标。
+  // 系统图标：白底圆角整标，多尺寸 PNG + Windows .ico + macOS .icns。
   await Promise.all(
-    pngSizes.map(size => renderPng(size, path.join(iconsDir, `${size}x${size}.png`))),
+    pngSizes.map(async size => {
+      const tile = await buildTile(size, { rounded: true, contentRatio: 0.78 });
+      await fs.promises.writeFile(path.join(iconsDir, `${size}x${size}.png`), tile);
+    }),
   );
 
   await fs.promises.copyFile(path.join(iconsDir, '512x512.png'), path.join(out, 'icon.png'));
@@ -93,11 +117,17 @@ async function main() {
   await fs.promises.writeFile(path.join(out, 'icon.ico'), ico);
   await writeIcns(path.join(out, 'icon.icns'));
 
-  // 应用内侧栏/空态用同一枚正式标；不要直接拷系统 512（含 Dock 留白），按 SVG 铺满导出。
-  const rendererMark = path.join(__dirname, '..', 'src', 'renderer', 'src', 'assets', 'brand-mark.png');
-  await sharp(Buffer.from(svg)).resize(256, 256).png().toFile(rendererMark);
+  // 应用内小尺寸品牌标（侧栏/空态/来源徽章）：白底方块，圆角交给 CSS，主标铺满多一点。
+  const brandMark = await buildTile(256, { rounded: false, contentRatio: 0.86 });
+  await fs.promises.writeFile(path.join(rendererAssets, 'brand-mark.png'), brandMark);
 
-  console.log('wrote build/icon.svg, build/icon.png, build/icon.ico, build/icon.icns, build/icons/*.png and src/renderer/src/assets/brand-mark.png');
+  // 大尺寸品牌区（启动页/新会话页）直接用透明主标，铺在各自水墨背景上。
+  await fs.promises.copyFile(master, path.join(rendererBrand, 'hydrozagent-logo.png'));
+
+  console.log(
+    'wrote build/icon.png, build/icon.ico, build/icon.icns, build/icons/*.png, ' +
+      'src/renderer/src/assets/brand-mark.png and src/renderer/src/assets/brand/hydrozagent-logo.png',
+  );
 }
 
 main().catch(error => {

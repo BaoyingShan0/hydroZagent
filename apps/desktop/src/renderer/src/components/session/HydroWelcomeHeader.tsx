@@ -1,7 +1,7 @@
 import { CloudRain, Droplets, Gauge, Waves } from "lucide-react";
 import { t } from "../../i18n";
 import welcomeBackdrop from "../../assets/brand/welcome-backdrop.png";
-import welcomeLogo from "../../assets/brand/HydroZagent_logo_idea1_no_words.png";
+import welcomeLogo from "../../assets/brand/hydrozagent-logo.png";
 
 const CAPABILITIES = [
   { key: "hydro.term.hydrology" as const, icon: Droplets },
