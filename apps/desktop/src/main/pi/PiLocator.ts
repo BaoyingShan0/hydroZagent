@@ -101,6 +101,15 @@ export class PiLocator {
     return "pi";
   }
 
+  /** 受管制品只允许随包 Pi，不读取自定义路径、PATH、WSL 或开发环境变量。 */
+  resolveManagedCommand(): string {
+    if (!app.isPackaged) throw new Error("受管运行时只能从已打包制品启动");
+    const executableName = process.platform === "win32" ? "pi.exe" : "pi";
+    const bundledCommand = join(process.resourcesPath, "pi-runtime", executableName);
+    if (!existsSync(bundledCommand)) throw new Error("受管制品缺少随包 Pi 运行时");
+    return bundledCommand;
+  }
+
   /**
    * 启动/设置变更时异步探测 WSL 内的 `pi`，结果写入进程级缓存。
    * 热路径 `resolveCommand` 只读缓存，避免同步 `execFileSync` 卡住主进程。

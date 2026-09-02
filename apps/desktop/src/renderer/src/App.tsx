@@ -39,6 +39,7 @@ import { type SidebarActions } from "./components/sidebar/SidebarContent";
 import { AppSidebar } from "./components/sidebar/AppSidebar";
 import { AppBootstrap } from "./components/app/AppBootstrap";
 import { HydroBrandMark } from "./components/app/HydroBrandMark";
+import { ManagedAccessOverlay } from "./components/managed/ManagedAccessOverlay";
 import { SettingsFeatureRoot } from "./components/app/SettingsFeatureRoot";
 import { useRename } from "./hooks/useRename";
 import { useProjectRuntimeCapabilities } from "./hooks/useRuntimeCapabilities";
@@ -504,6 +505,13 @@ export function App() {
   // upToDateVersion: hook does not expose this; used by AppUpdateOverlay for "up to date" toast.
   const [upToDateVersion, setUpToDateVersion] = useState<string | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
+  const [managedMode, setManagedMode] = useState(false);
+
+  useEffect(() => {
+    void api.managed.status()
+      .then((status) => setManagedMode(status.managed))
+      .catch(() => undefined);
+  }, []);
 
   const PROJECT_EXPANDED_DIRS_KEY_PREFIX = "pid:project-expanded-dirs:";
 
@@ -2753,7 +2761,10 @@ export function App() {
       branchByProject={branchByProject}
       creatingWorktree={worktreeCreating}
       isLanWeb={isLanWeb}
-      onOpenConfig={() => setConfigOpen(true)}
+      managedMode={managedMode}
+      onOpenConfig={() => {
+        if (!managedMode) setConfigOpen(true);
+      }}
       onOpenFeedback={() => overlays.setFeedbackOpen(true)}
       settingsExpandedProjectIds={settings.sidebarExpandedProjectIds}
       settingsLoaded={settingsLoaded}
@@ -3460,7 +3471,7 @@ export function App() {
     />
 
     {/* old conditional wrapping — replaced by EnvironmentOverlay open prop below */}
-    <EnvironmentOverlay open={environmentDialog}>
+    {!managedMode && <EnvironmentOverlay open={environmentDialog}>
       <EnvironmentDialog
         status={piStatus}
         checking={piChecking}
@@ -3538,8 +3549,8 @@ export function App() {
           showToast(t("environment.checkFlagCleared"));
         }}
       />
-    </EnvironmentOverlay>
-    <SettingsFeatureRoot
+    </EnvironmentOverlay>}
+    {!managedMode && <SettingsFeatureRoot
       settings={settings}
       piUpdate={piUpdate}
       appUpdate={appUpdate}
@@ -3548,15 +3559,15 @@ export function App() {
       appInfo={appInfo}
       onChange={updateSettings}
       onCurrentVersion={setUpToDateVersion}
-    />
+    />}
     <SessionActionOverlays {...overlays.overlayProps} />
-    <AppUpdateOverlay
+    {!managedMode && <AppUpdateOverlay
       controller={appUpdate}
       releasesUrl={appInfo.releasesUrl}
       openExternal={(url, forceSystem) => api.app.openExternal(url, forceSystem)}
       upToDateVersion={upToDateVersion}
       onDismissUpToDate={() => setUpToDateVersion(null)}
-    />
+    />}
     {previewImage && (
       <ImagePreviewModal
         image={previewImage}
@@ -3566,7 +3577,7 @@ export function App() {
     {codexImportProject && <ImportOverlayHost kind="codex" project={codexImportProject} controller={codexImportController} onClose={() => setCodexImportProject(null)} />}
     {claudeImportProject && <ImportOverlayHost kind="claude" project={claudeImportProject} controller={claudeImportController} onClose={() => setClaudeImportProject(null)} />}
     {openCodeImportProject && <ImportOverlayHost kind="opencode" project={openCodeImportProject} controller={openCodeImportController} onClose={() => setOpenCodeImportProject(null)} />}
-    <Suspense fallback={null}>
+    {!managedMode && <Suspense fallback={null}>
     <ConfigModal
       open={configOpen}
       onClose={() => setConfigOpen(false)}
@@ -3574,7 +3585,7 @@ export function App() {
         // 配置保存后不再自动 reload,用户可通过 Restart 按钮手动重载
       }}
     />
-    </Suspense>
+    </Suspense>}
 
     {/* Scratch Pad（草稿本）：根级渲染，避免受 chat-pane grid 影响定位 */}
     <ScratchPadOverlay controller={scratchPad} />
@@ -3594,6 +3605,7 @@ export function App() {
     />
 
     </AppShell>
+	<ManagedAccessOverlay />
     </>
   );
 }

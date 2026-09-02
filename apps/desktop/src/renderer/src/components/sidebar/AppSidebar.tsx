@@ -18,6 +18,7 @@ interface AppSidebarProps {
   branchByProject: Record<string, string | null>;
   creatingWorktree: boolean;
   isLanWeb: boolean;
+  managedMode: boolean;
   onOpenConfig: () => void;
   onOpenFeedback: () => void;
   onOpenHomepage: () => void;
@@ -59,6 +60,7 @@ export function AppSidebar(props: AppSidebarProps) {
       branchByProject={props.branchByProject}
       creatingWorktree={props.creatingWorktree}
       isLanWeb={props.isLanWeb}
+      managedMode={props.managedMode}
       chrome={<>
         <div className="list-toolbar flex h-12 shrink-0 items-center gap-1 pr-2.5 pl-[max(0.625rem,var(--traffic-lights-width,0px))]">
           <div className="app-badge flex min-w-0 flex-1 items-center">
@@ -77,7 +79,9 @@ export function AppSidebar(props: AppSidebarProps) {
           </Button>
         </div>
       </>}
-      onOpenSettings={() => setSettingsOpen(true)}
+      onOpenSettings={() => {
+        if (!props.managedMode) setSettingsOpen(true);
+      }}
       onOpenConfig={props.onOpenConfig}
       onOpenFeedback={props.onOpenFeedback}
       onOpenHomepage={props.onOpenHomepage}

@@ -39,6 +39,7 @@ import {
 	type ProviderMigrationDeps,
 } from "../config/providerMigrationService";
 import type { ProviderMigrationDirection } from "../../shared/types/providerMigration";
+import { isManagedSettingImmutable } from "../managed/settingsPolicy";
 
 /**
  * IPC 边界校验：RPC 日志条目必须字段齐全，防止渲染层传伪造对象写盘。
@@ -59,6 +60,8 @@ export type SystemIpcDeps = {
 	piLocator: PiLocator;
 	settingsStore: SettingsStore;
 	configManager: ConfigManager;
+	managedMode?: boolean;
+	listManagedModels?: (force: boolean) => Promise<AvailableModel[]>;
 	agentManager: AgentManager;
 	skillManager: SkillManager;
 	appLogger: AppLogger;
@@ -163,6 +166,8 @@ export function registerSystemIpc(deps: SystemIpcDeps): void {
 		piLocator,
 		settingsStore,
 		configManager,
+		managedMode,
+		listManagedModels,
 		agentManager,
 		skillManager,
 		appLogger,
@@ -212,6 +217,17 @@ export function registerSystemIpc(deps: SystemIpcDeps): void {
 	// ── Pi 检测 ──────────────────────────────────────────────────────
 
 	ipcMain.handle(ipcChannels.piCheck, async () => {
+		if (managedMode) {
+			try {
+				return { installed: true, command: piLocator.resolveManagedCommand(), searchedDirs: [] };
+			} catch (error: unknown) {
+				return {
+					installed: false,
+					searchedDirs: [],
+					error: error instanceof Error ? error.message : String(error),
+				};
+			}
+		}
 		const settings = settingsStore.get();
 		const status = await piLocator.check(settings.customPiPath, settings.wslEnabled, settings.wslDistro, settings.wslUser);
 		void appLogger.info("pi", "Pi check completed", {
@@ -224,6 +240,7 @@ export function registerSystemIpc(deps: SystemIpcDeps): void {
 	});
 
 	ipcMain.handle(ipcChannels.piCheckCustom, async (_event, customPath: string) => {
+		if (managedMode) throw new Error("受管制品不允许自定义 Pi 路径");
 		const settings = settingsStore.get();
 		const status = await piLocator.validateCustomPath(
 			customPath,
@@ -247,6 +264,7 @@ export function registerSystemIpc(deps: SystemIpcDeps): void {
 
 	ipcMain.handle(ipcChannels.projectsListModels, async (_event, _projectId?: string) => {
 		try {
+			if (managedMode) return await listManagedModels?.(false) ?? [];
 			// 读缓存；无缓存时后台 fork pi --list-models（含加速参数，auth 由 pi 处理）。
 			const models = await fetchModelList(piLocator, settingsStore, configManager);
 			void appLogger.info("pi", "Model list resolved", {
@@ -269,6 +287,18 @@ export function registerSystemIpc(deps: SystemIpcDeps): void {
 			typeof projectId === "string" && projectId.length <= 256 ? projectId : undefined;
 		const forceArg = force === true;
 		try {
+			if (managedMode) {
+				const models = await listManagedModels?.(forceArg) ?? [];
+				return {
+					models,
+					ok: models.length > 0,
+					reason: models.length > 0 ? null : "empty",
+					version: null,
+					detail: models.length > 0 ? "" : "受管模型目录不可用",
+					source: models.length > 0 ? "cache" : "none",
+					at: Date.now(),
+				};
+			}
 			// 诊断报告：模型数组 + 为空时的失败原因（force=手动刷新，绕过缓存重新 fork）。
 			const report = await resolveModelListReport(
 				piLocator,
@@ -820,6 +850,12 @@ export function registerSystemIpc(deps: SystemIpcDeps): void {
 	ipcMain.handle(ipcChannels.settingsGet, () => settingsStore.get());
 
 	ipcMain.handle(ipcChannels.settingsUpdate, async (_event, patch: Partial<AppSettings>) => {
+		if (
+			managedMode &&
+			Object.keys(patch).some(isManagedSettingImmutable)
+		) {
+			throw new Error("受管制品不允许修改运行时、网络或外部模型通道设置");
+		}
 		const prevSettings = settingsStore.get();
 		const settings = await settingsStore.update(patch);
 		if ("developerDiagnostics" in patch && diagnosticsMonitor) {

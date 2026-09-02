@@ -11,6 +11,55 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  hcs-check-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_DB: hydro_hcs_test
+          POSTGRES_PASSWORD: hydro_hcs_test
+          POSTGRES_USER: hydro_hcs_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hydro_hcs_test -d hydro_hcs_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      HCS_TEST_DATABASE_URL: postgresql://hydro_hcs_test:hydro_hcs_test@127.0.0.1:5432/hydro_hcs_test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/server/package-lock.json
+
+      - name: Install HCS dependencies
+        run: npm ci --prefix apps/server --ignore-scripts
+
+      - name: Check generated contracts
+        run: node scripts/check-hcs-contracts.mjs
+
+      - name: Typecheck and build HCS
+        run: npm --prefix apps/server run check
+
+      - name: Test HCS
+        run: npm --prefix apps/server test
+
+      - name: Test HCS PostgreSQL integration
+        run: npm --prefix apps/server run test:integration
+
+      - name: Check HCS deployment assets
+        run: |
+          node scripts/check-hcs-deploy.mjs
+          bash -n deploy/hcs/bin/hydro-hcs-admin deploy/hcs/scripts/*.sh
+
   build-check-test:
     runs-on: ubuntu-latest
     steps:
@@ -40,3 +89,57 @@ jobs:
 
       - name: Test
         run: npm test
+
+  managed-windows-artifact:
+    runs-on: windows-latest
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      HYDRO_HCS_BASE_URL: https://hcs.test.internal
+      HYDRO_HCS_CA_BUNDLE_PATH: ${{ github.workspace }}\contracts\hcs\v1\fixtures\test-ca.pem
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/desktop/package-lock.json
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.3.14
+
+      - name: Install root and desktop dependencies without lifecycle scripts
+        shell: pwsh
+        run: |
+          npm ci --ignore-scripts
+          npm ci --prefix apps/desktop --ignore-scripts
+          node apps/desktop/node_modules/electron/install.js
+
+      - name: Verify contracts and managed runtime tests
+        shell: pwsh
+        run: |
+          node scripts/check-hcs-contracts.mjs
+          npm --prefix apps/desktop run typecheck
+          Push-Location apps/desktop
+          node --test tests/managedAuthManager.test.mjs tests/managedCatalogService.test.mjs tests/managedCredentialStore.test.mjs tests/managedDeviceIdentityStore.test.mjs tests/managedHcsClient.test.mjs tests/managedIpcBoundary.test.mjs tests/managedIpcLock.test.mjs tests/managedLoopbackProxy.test.mjs tests/managedSettingsPolicy.test.mjs tests/managedUsageProjection.test.mjs tests/managedUsageReporter.test.mjs tests/piProcessErrorSafety.test.mjs tests/piProcessSecurityEnv.test.mjs tests/piRpcClientTimeout.test.mjs
+          Pop-Location
+          npm test --prefix packages/coding-agent -- test/managed-provider.test.ts
+
+      - name: Build managed Windows installer
+        run: npm run desktop:dist:managed
+
+      - name: Scan managed artifact
+        run: npm --prefix apps/desktop run check:managed-artifact
+
+      - name: Upload managed artifact evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: hydrozagent-managed-windows
+          path: apps/desktop/release/*managed*
+          if-no-files-found: error

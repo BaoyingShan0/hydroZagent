@@ -29,6 +29,7 @@ import { killTrackedDetachedChildren } from "../../utils/shell.ts";
 import { type Theme, theme } from "../interactive/theme/theme.ts";
 import { toJsonEvent } from "../json-event.ts";
 import { attachJsonlLineReader, serializeJsonLine } from "./jsonl.ts";
+import { ManagedProviderController } from "./managed-provider.ts";
 import type {
 	RpcCommand,
 	RpcExtensionUIRequest,
@@ -51,7 +52,10 @@ export type {
  * Run in RPC mode.
  * Listens for JSON commands on stdin, outputs events and responses on stdout.
  */
-export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<never> {
+export async function runRpcMode(
+	runtimeHost: AgentSessionRuntime,
+	options: { managed?: boolean } = {},
+): Promise<never> {
 	takeOverStdout();
 	let session = runtimeHost.session;
 	let unsubscribe: (() => void) | undefined;
@@ -75,6 +79,18 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 	const error = (id: string | undefined, command: string, message: string): RpcResponse => {
 		return { id, type: "response", command, success: false, error: message };
 	};
+
+	const managedProvider = new ManagedProviderController({
+		enabled: options.managed === true,
+		apply: async (provider) => {
+			session.modelRuntime.unregisterProvider(provider.providerId);
+			session.modelRuntime.registerProvider(provider.providerId, provider.configuration);
+			const model = session.modelRuntime.getModel(provider.providerId, provider.initialModelId);
+			if (!model) throw new Error("Managed model projection failed");
+			await session.setModel(model);
+			if (provider.defaultThinkingLevel) session.setThinkingLevel(provider.defaultThinkingLevel);
+		},
+	});
 
 	// Pending extension UI requests waiting for response
 	const pendingExtensionRequests = new Map<
@@ -316,6 +332,7 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 
 	const rebindSession = async (): Promise<void> => {
 		session = runtimeHost.session;
+		await managedProvider.reapply();
 		await session.bindExtensions({
 			uiContext: createExtensionUIContext(),
 			mode: "rpc",
@@ -387,11 +404,18 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 		const id = command.id;
 
 		switch (command.type) {
+			case "configure_managed_provider":
+				return managedProvider.configure(command);
+
 			// =================================================================
 			// Prompting
 			// =================================================================
 
 			case "prompt": {
+				if (options.managed && !managedProvider.isConfigured()) {
+					return error(id, "prompt", "Managed provider is not configured");
+				}
+				if (options.managed) managedProvider.markRuntimeStarted();
 				// Start prompt handling immediately, but emit the authoritative response only after
 				// prompt preflight succeeds. Queued and immediately handled prompts also count as success.
 				let preflightSucceeded = false;
@@ -416,11 +440,16 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 			}
 
 			case "steer": {
+				if (options.managed && !managedProvider.isConfigured())
+					return error(id, "steer", "Managed provider is not configured");
 				await session.steer(command.message, command.images);
 				return success(id, "steer");
 			}
 
 			case "follow_up": {
+				if (options.managed && !managedProvider.isConfigured()) {
+					return error(id, "follow_up", "Managed provider is not configured");
+				}
 				await session.followUp(command.message, command.images);
 				return success(id, "follow_up");
 			}
@@ -445,7 +474,7 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 
 			case "get_state": {
 				const state: RpcSessionState = {
-					model: session.model,
+					model: !options.managed || session.model?.provider === "hydro-managed" ? session.model : undefined,
 					thinkingLevel: session.thinkingLevel,
 					isStreaming: session.isStreaming,
 					isCompacting: session.isCompacting,
@@ -466,7 +495,12 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 			// =================================================================
 
 			case "set_model": {
-				const models = session.modelRuntime.getAvailableSnapshot();
+				if (options.managed && command.provider !== "hydro-managed") {
+					return error(id, "set_model", "Only Hydro managed models are available");
+				}
+				const models = session.modelRuntime
+					.getAvailableSnapshot()
+					.filter((model) => !options.managed || model.provider === "hydro-managed");
 				const model = models.find((m) => m.provider === command.provider && m.id === command.modelId);
 				if (!model) {
 					return error(id, "set_model", `Model not found: ${command.provider}/${command.modelId}`);
@@ -476,6 +510,21 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 			}
 
 			case "cycle_model": {
+				if (options.managed) {
+					const models = session.modelRuntime
+						.getAvailableSnapshot()
+						.filter((model) => model.provider === "hydro-managed");
+					if (models.length === 0) return success(id, "cycle_model", null);
+					const currentIndex = models.findIndex((model) => model.id === session.model?.id);
+					const next = models[(currentIndex + 1) % models.length];
+					if (!next) return success(id, "cycle_model", null);
+					await session.setModel(next);
+					return success(id, "cycle_model", {
+						model: next,
+						thinkingLevel: session.thinkingLevel,
+						isScoped: false,
+					});
+				}
 				const result = await session.cycleModel();
 				if (!result) {
 					return success(id, "cycle_model", null);
@@ -484,7 +533,9 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 			}
 
 			case "get_available_models": {
-				const models = session.modelRuntime.getAvailableSnapshot();
+				const models = session.modelRuntime
+					.getAvailableSnapshot()
+					.filter((model) => !options.managed || model.provider === "hydro-managed");
 				return success(id, "get_available_models", { models });
 			}
 

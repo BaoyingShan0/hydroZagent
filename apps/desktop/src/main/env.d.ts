@@ -6,3 +6,7 @@ declare module "*?asset" {
 	const value: string;
 	export default value;
 }
+
+declare const __HYDRO_MANAGED__: boolean;
+declare const __HYDRO_HCS_BASE_URL__: string;
+declare const __HYDRO_HCS_CA_BUNDLE__: string;

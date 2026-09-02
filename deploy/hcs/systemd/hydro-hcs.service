@@ -1,0 +1,20 @@
+[Unit]
+Description=Hydro Control Server single-node stack
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+OnFailure=hydro-hcs-alert@%n.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/hydro-hcs/deploy.env
+WorkingDirectory=/opt/hydro-hcs/deploy
+ExecStartPre=/opt/hydro-hcs/deploy/scripts/verify-deployment.sh
+ExecStart=/usr/bin/docker compose --env-file /etc/hydro-hcs/deploy.env -f /opt/hydro-hcs/deploy/compose.yml up -d --remove-orphans --wait --wait-timeout 240
+ExecStop=/usr/bin/docker compose --env-file /etc/hydro-hcs/deploy.env -f /opt/hydro-hcs/deploy/compose.yml down
+TimeoutStartSec=300
+TimeoutStopSec=90
+
+[Install]
+WantedBy=multi-user.target

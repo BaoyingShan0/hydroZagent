@@ -1,0 +1,6 @@
+[Unit]
+Description=Hydro HCS failure alert for %i
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemd-cat -t hydro-hcs-alert /bin/echo "Hydro HCS unit failed: %i"

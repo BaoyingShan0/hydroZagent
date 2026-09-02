@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Added the versioned `configure_managed_provider` RPC handshake for managed desktop runtimes, with fail-closed pre-prompt gating, fixed Hydro provider projection, and capability-backed loopback transport that is excluded from model snapshots and stdout.
+
 ## [0.84.2] - 2026-08-14
 
 ### New Features

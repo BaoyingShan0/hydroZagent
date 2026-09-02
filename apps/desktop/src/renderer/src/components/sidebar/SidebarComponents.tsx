@@ -438,6 +438,7 @@ export function ProjectContextMenu(props: {
 	onRefreshProject: () => void;
 	onCopyProjectPath: () => void;
 	onRemoveProject: () => void;
+	managedMode?: boolean;
 }) {
 	const isWorktreeEnabled = props.menu.project.worktreeEnabled ?? false;
 	return (
@@ -453,7 +454,7 @@ export function ProjectContextMenu(props: {
 			<DropdownMenuItem onSelect={props.onManageSessions}>{t("menu.manageSessions")}</DropdownMenuItem>
 			{/* 内置聊天项目没有 .pi/.agents 资源目录，不暴露项目管理入口，避免打开即报
 			    "Chat 项目不支持项目级资源"（由弹窗本体兜底） */}
-			{props.menu.project.kind !== "chat" && (
+			{!props.managedMode && props.menu.project.kind !== "chat" && (
 				<DropdownMenuItem onSelect={props.onManageProjectResources}>{t("menu.projectResources")}</DropdownMenuItem>
 			)}
 			<DropdownMenuItem onSelect={props.onFilterSessions}>{t("menu.filterSessions")}</DropdownMenuItem>
@@ -495,6 +496,7 @@ export function AgentContextMenu(props: {
 	onCloseAgent: () => void;
 	/** 运行中也可删：主进程先停后删，不必先关 Agent。 */
 	onDeleteSession?: () => void;
+	allowRpcLogging?: boolean;
 }) {
 	const busy = Boolean(props.actionLoading);
 	return (
@@ -525,6 +527,7 @@ export function AgentContextMenu(props: {
 					)}
 				</>
 			)}
+			{props.allowRpcLogging !== false && <>
 			<DropdownMenuSeparator />
 			<DropdownMenuItem
 				disabled={busy || props.rpcToggleDisabled}
@@ -539,6 +542,7 @@ export function AgentContextMenu(props: {
 					{t("menu.rpcLogView")}
 				</DropdownMenuItem>
 			)}
+			</>}
 			<DropdownMenuSeparator />
 			<DropdownMenuItem variant="destructive" onSelect={props.onCloseAgent}>{t("menu.closeAgent")}</DropdownMenuItem>
 			{props.onDeleteSession && (
@@ -573,10 +577,12 @@ export function SessionContextMenu(props: {
 	onOpenSessionFile?: () => void;
 	/** 打开会话代理设置弹框（菜单项「会话代理」） */
 	onOpenProxySetting?: () => void;
+	allowProxySetting?: boolean;
 	/** 会话是否有文件路径（DSH 会话无 pi 会话文件：隐藏「复制路径/打开文件」） */
 	hasFilePath?: boolean;
 	/** RPC 日志菜单组（与 AgentContextMenu 同语义）：仅会话有 live runtime 时显示 */
 	canRpcLog?: boolean;
+	allowRpcLogging?: boolean;
 	rpcToggleDisabled?: boolean;
 	isRpcLogging?: boolean;
 	/** 打开 RPC 日志：未开启时先开启记录，再弹“已打开”提醒框（含查看入口） */
@@ -594,7 +600,9 @@ export function SessionContextMenu(props: {
 		<MenuShell x={props.menu.x} y={props.menu.y} onClose={props.onClose}>
 			<DropdownMenuItem disabled={busy} onSelect={props.onRename}>{t("common.rename")}</DropdownMenuItem>
 			{/* DSH 历史会话无宿主文件可复制/导出（主进程显式拒绝，A8/A9）：隐藏入口 */}
-			<DropdownMenuItem disabled={busy} onSelect={props.onOpenProxySetting}>{t("menu.sessionProxy")}</DropdownMenuItem>
+			{props.allowProxySetting !== false && (
+				<DropdownMenuItem disabled={busy} onSelect={props.onOpenProxySetting}>{t("menu.sessionProxy")}</DropdownMenuItem>
+			)}
 			{props.menu.session.backend !== "dsh" && (
 				<DropdownMenuItem disabled={busy} onSelect={props.onCopySession}>
 					{props.actionLoading === "copy" && <span className="mini-loader" />}
@@ -622,7 +630,7 @@ export function SessionContextMenu(props: {
 				</>
 			)}
 			{showRpcGroup && (
-				<>
+				props.allowRpcLogging !== false ? <>
 					<DropdownMenuItem
 						disabled={busy || props.rpcToggleDisabled}
 						// 置灰时仍给出原因提示，避免用户以为功能坏了
@@ -636,7 +644,7 @@ export function SessionContextMenu(props: {
 							{t("menu.rpcLogView")}
 						</DropdownMenuItem>
 					)}
-				</>
+				</> : null
 			)}
 			<DropdownMenuSeparator />
 			<DropdownMenuItem disabled={busy} onSelect={props.onArchiveSession}>

@@ -1,0 +1,1 @@
+%hydro-admin ALL=(root) /usr/local/sbin/hydro-hcs-admin

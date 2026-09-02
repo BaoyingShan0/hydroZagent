@@ -245,6 +245,16 @@ export function createPreviewApi(): PiDesktopApi {
 		return tab;
 	};
 	return {
+		managed: {
+			status: async () => ({ managed: false, authenticated: false, user: null, failure: null, consent: "unknown" }),
+			login: async () => ({ managed: false, authenticated: false, user: null, failure: null, consent: "unknown" }),
+			register: async () => ({ managed: false, authenticated: false, user: null, failure: null, consent: "unknown" }),
+			notice: async () => ({ notice_version: "", text: "" }),
+			consent: async () => {},
+			withdraw: async () => {},
+			logout: async () => {},
+			deactivate: async () => {},
+		},
 		clipboard: clipboardStub,
 		// 进程监控预览桩：返回空快照，仅供预览模式不崩溃
 		system: {

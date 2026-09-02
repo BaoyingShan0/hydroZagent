@@ -1,0 +1,183 @@
+{
+	"openapi": "3.1.0",
+	"info": {
+		"title": "Hydro Control Server API",
+		"version": "1.0.0"
+	},
+	"servers": [{ "url": "https://hcs.invalid" }],
+	"paths": {
+		"/auth/register": {
+			"post": {
+				"operationId": "register",
+				"requestBody": { "$ref": "#/components/requestBodies/Register" },
+				"responses": {
+					"201": { "$ref": "#/components/responses/AuthTokens" },
+					"400": { "$ref": "#/components/responses/Error" },
+					"429": { "$ref": "#/components/responses/Error" }
+				}
+			}
+		},
+		"/auth/login": {
+			"post": {
+				"operationId": "login",
+				"requestBody": { "$ref": "#/components/requestBodies/Login" },
+				"responses": {
+					"200": { "$ref": "#/components/responses/AuthTokens" },
+					"401": { "$ref": "#/components/responses/Error" },
+					"423": { "$ref": "#/components/responses/Error" },
+					"429": { "$ref": "#/components/responses/Error" }
+				}
+			}
+		},
+		"/auth/refresh": {
+			"post": {
+				"operationId": "refresh",
+				"requestBody": { "$ref": "#/components/requestBodies/Refresh" },
+				"responses": {
+					"200": { "$ref": "#/components/responses/AuthTokens" },
+					"401": { "$ref": "#/components/responses/Error" }
+				}
+			}
+		},
+		"/auth/logout": {
+			"post": {
+				"operationId": "logout",
+				"security": [{ "bearerAuth": [] }],
+				"responses": {
+					"200": { "$ref": "#/components/responses/Accepted" },
+					"401": { "$ref": "#/components/responses/Error" }
+				}
+			}
+		},
+		"/auth/password-reset/confirm": {
+			"post": {
+				"operationId": "confirmPasswordReset",
+				"requestBody": { "$ref": "#/components/requestBodies/PasswordResetConfirm" },
+				"responses": {
+					"200": { "$ref": "#/components/responses/Accepted" },
+					"401": { "$ref": "#/components/responses/Error" }
+				}
+			}
+		},
+		"/auth/deactivate": {
+			"post": {
+				"operationId": "deactivateAccount",
+				"security": [{ "bearerAuth": [] }],
+				"responses": {
+					"200": { "$ref": "#/components/responses/Accepted" },
+					"401": { "$ref": "#/components/responses/Error" }
+				}
+			}
+		},
+		"/auth/notice": {
+			"get": {
+				"operationId": "getNotice",
+				"responses": { "200": { "$ref": "#/components/responses/Notice" } }
+			}
+		},
+		"/auth/consent": {
+			"post": {
+				"operationId": "recordConsent",
+				"security": [{ "bearerAuth": [] }],
+				"requestBody": { "$ref": "#/components/requestBodies/Consent" },
+				"responses": {
+					"200": { "$ref": "#/components/responses/Accepted" },
+					"401": { "$ref": "#/components/responses/Error" }
+				}
+			}
+		},
+		"/auth/withdraw-consent": {
+			"post": {
+				"operationId": "withdrawConsent",
+				"security": [{ "bearerAuth": [] }],
+				"responses": {
+					"200": { "$ref": "#/components/responses/Accepted" },
+					"401": { "$ref": "#/components/responses/Error" }
+				}
+			}
+		},
+		"/proxy/v1/models": {
+			"get": {
+				"operationId": "getManagedModels",
+				"security": [{ "bearerAuth": [] }],
+				"responses": {
+					"200": { "$ref": "#/components/responses/ManagedModels" },
+					"401": { "$ref": "#/components/responses/Error" },
+					"503": { "$ref": "#/components/responses/Error" }
+				}
+			}
+		},
+		"/proxy/v1/chat/completions": {
+			"post": {
+				"operationId": "createManagedChatCompletion",
+				"security": [{ "bearerAuth": [] }],
+				"requestBody": { "$ref": "#/components/requestBodies/ChatCompletion" },
+				"responses": {
+					"200": { "description": "OpenAI-compatible response or SSE stream" },
+					"401": { "$ref": "#/components/responses/Error" },
+					"403": { "$ref": "#/components/responses/Error" },
+					"429": { "$ref": "#/components/responses/Error" }
+				}
+			}
+		},
+		"/ingest/usage": {
+			"post": {
+				"operationId": "ingestUsage",
+				"security": [{ "bearerAuth": [] }],
+				"requestBody": { "$ref": "#/components/requestBodies/Usage" },
+				"responses": {
+					"200": { "$ref": "#/components/responses/UsageAccepted" },
+					"401": { "$ref": "#/components/responses/Error" },
+					"403": { "$ref": "#/components/responses/Error" }
+				}
+			}
+		},
+		"/healthz": {
+			"get": {
+				"operationId": "health",
+				"responses": { "200": { "$ref": "#/components/responses/Health" } }
+			}
+		},
+		"/readyz": {
+			"get": {
+				"operationId": "readiness",
+				"responses": {
+					"200": { "$ref": "#/components/responses/Health" },
+					"503": { "$ref": "#/components/responses/Health" }
+				}
+			}
+		}
+	},
+	"components": {
+		"securitySchemes": {
+			"bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+		},
+		"requestBodies": {
+			"Register": { "$ref": "#/components/x-requestBody/RegisterRequest" },
+			"Login": { "$ref": "#/components/x-requestBody/LoginRequest" },
+			"Refresh": { "$ref": "#/components/x-requestBody/RefreshRequest" },
+			"PasswordResetConfirm": { "$ref": "#/components/x-requestBody/PasswordResetConfirmRequest" },
+			"Consent": { "$ref": "#/components/x-requestBody/ConsentRequest" },
+			"ChatCompletion": { "$ref": "#/components/x-requestBody/ManagedChatCompletionsRequest" },
+			"Usage": { "$ref": "#/components/x-requestBody/UsageIngestRequest" }
+		},
+		"x-requestBody": {
+			"RegisterRequest": { "required": true, "content": { "application/json": { "schema": { "$ref": "./schema.json#/$defs/RegisterRequest" } } } },
+			"LoginRequest": { "required": true, "content": { "application/json": { "schema": { "$ref": "./schema.json#/$defs/LoginRequest" } } } },
+			"RefreshRequest": { "required": true, "content": { "application/json": { "schema": { "$ref": "./schema.json#/$defs/RefreshRequest" } } } },
+			"PasswordResetConfirmRequest": { "required": true, "content": { "application/json": { "schema": { "$ref": "./schema.json#/$defs/PasswordResetConfirmRequest" } } } },
+			"ConsentRequest": { "required": true, "content": { "application/json": { "schema": { "$ref": "./schema.json#/$defs/ConsentRequest" } } } },
+			"ManagedChatCompletionsRequest": { "required": true, "content": { "application/json": { "schema": { "$ref": "./schema.json#/$defs/ManagedChatCompletionsRequest" } } } },
+			"UsageIngestRequest": { "required": true, "content": { "application/json": { "schema": { "$ref": "./schema.json#/$defs/UsageIngestRequest" } } } }
+		},
+		"responses": {
+			"AuthTokens": { "description": "Issued and rotated tokens", "content": { "application/json": { "schema": { "$ref": "./schema.json#/$defs/AuthTokensResponse" } } } },
+			"Accepted": { "description": "Operation accepted", "content": { "application/json": { "schema": { "$ref": "./schema.json#/$defs/AcceptedResponse" } } } },
+			"Notice": { "description": "Current notice", "content": { "application/json": { "schema": { "$ref": "./schema.json#/$defs/NoticeResponse" } } } },
+			"ManagedModels": { "description": "Managed model catalog", "content": { "application/json": { "schema": { "$ref": "./schema.json#/$defs/ManagedModelsResponse" } } } },
+			"UsageAccepted": { "description": "Usage event accepted", "content": { "application/json": { "schema": { "$ref": "./schema.json#/$defs/UsageIngestResponse" } } } },
+			"Health": { "description": "Health state", "content": { "application/json": { "schema": { "$ref": "./schema.json#/$defs/HealthResponse" } } } },
+			"Error": { "description": "Structured HCS error", "content": { "application/json": { "schema": { "$ref": "./schema.json#/$defs/ErrorResponse" } } } }
+		}
+	}
+}

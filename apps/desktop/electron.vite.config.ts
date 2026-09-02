@@ -2,6 +2,7 @@ import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "node:path";
+import { readFileSync } from "node:fs";
 import type { Plugin } from "vite";
 import { readDevGitBranch, resolveDevVitePort } from "./src/main/devIsolation";
 
@@ -44,6 +45,44 @@ function katexWoff2OnlyPlugin(): Plugin {
 	};
 }
 
+function managedBuildDefinitions(): Record<string, string> {
+	const managed = process.env.HYDRO_MANAGED_BUILD === "1";
+	if (!managed) {
+		return {
+			__HYDRO_MANAGED__: "false",
+			__HYDRO_HCS_BASE_URL__: JSON.stringify(""),
+			__HYDRO_HCS_CA_BUNDLE__: JSON.stringify(""),
+		};
+	}
+	const baseUrlSource = process.env.HYDRO_HCS_BASE_URL;
+	const caBundlePath = process.env.HYDRO_HCS_CA_BUNDLE_PATH;
+	if (!baseUrlSource || !caBundlePath) {
+		throw new Error("Managed build requires HYDRO_HCS_BASE_URL and HYDRO_HCS_CA_BUNDLE_PATH");
+	}
+	const baseUrl = new URL(baseUrlSource);
+	if (
+		baseUrl.protocol !== "https:" ||
+		baseUrl.username ||
+		baseUrl.password ||
+		baseUrl.pathname !== "/" ||
+		baseUrl.search ||
+		baseUrl.hash ||
+		baseUrl.hostname === "localhost" ||
+		/^127\./u.test(baseUrl.hostname)
+	) {
+		throw new Error("Managed HCS endpoint must be an HTTPS origin with a verifiable non-loopback hostname");
+	}
+	const caBundle = readFileSync(resolve(caBundlePath), "utf8");
+	if (!caBundle.includes("-----BEGIN CERTIFICATE-----") || !caBundle.includes("-----END CERTIFICATE-----")) {
+		throw new Error("Managed HCS CA bundle is not a PEM certificate bundle");
+	}
+	return {
+		__HYDRO_MANAGED__: "true",
+		__HYDRO_HCS_BASE_URL__: JSON.stringify(baseUrl.origin),
+		__HYDRO_HCS_CA_BUNDLE__: JSON.stringify(caBundle),
+	};
+}
+
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
@@ -75,6 +114,7 @@ export default defineConfig({
     define: {
       // 构建标记：npm run dist:win:dev 打包时注入 true，用于隔离 dev 构建的配置目录与 AppUserModelID。
       __PIDECK_DEV_BUILD__: JSON.stringify(process.env.PIDECK_DEV_BUILD === "1"),
+		...managedBuildDefinitions(),
     },
   },
   preload: {

@@ -79,3 +79,34 @@ test("large JSONL lines parse after the stdout data callback returns", async () 
   assert.equal(response.success, true);
   assert.equal(response.command, "get_entries");
 });
+
+test("managed provider capability and catalog are redacted from RPC logs", () => {
+  const chunks = [];
+  const stdin = new Writable({
+    write: (chunk, _enc, callback) => {
+      chunks.push(String(chunk));
+      callback();
+    },
+  });
+  const stdout = new PassThrough();
+  const client = new PiRpcClient(stdin, stdout);
+  const logs = [];
+  client.on("log", (entry) => logs.push(entry));
+
+  client.notify({
+    type: "configure_managed_provider",
+    protocolVersion: 1,
+    runtimeId: "00000000-0000-4000-8000-000000000001",
+    catalogVersion: "catalog-secret-version",
+    baseUrl: "http://127.0.0.1:49152/proxy/v1",
+    capability: "capability-must-never-reach-logs-00000000",
+    models: [{ id: "managed-secret-model", name: "Managed Secret Model" }],
+  });
+
+  const serializedLog = JSON.stringify(logs);
+  assert.equal(serializedLog.includes("capability-must-never-reach-logs"), false);
+  assert.equal(serializedLog.includes("managed-secret-model"), false);
+  assert.equal(serializedLog.includes("127.0.0.1:49152"), false);
+  assert.equal(logs[0].data.modelCount, 1);
+  assert.equal(chunks.join("").includes("capability-must-never-reach-logs"), true);
+});

@@ -1,0 +1,76 @@
+[
+	{
+		"schema": "ManagedModel",
+		"value": {
+			"id": "hydro-chat",
+			"name": "Hydro Chat",
+			"provider": "hydro-managed",
+			"contextWindow": 131072,
+			"maxTokens": 8192,
+			"reasoning": true,
+			"input": ["text", "image"],
+			"thinkingLevelMap": { "off": null, "medium": "medium", "high": "high" },
+			"defaultThinkingLevel": "medium",
+			"compat": { "supportsUsageInStreaming": true, "maxTokensField": "max_tokens" }
+		}
+	},
+	{
+		"schema": "RegisterRequest",
+		"value": {
+			"username": "hydro.user",
+			"password": "correct-horse-battery-staple",
+			"device_id": "device-01",
+			"client_version": "0.1.0-hydro"
+		}
+	},
+	{
+		"schema": "UsageIngestRequest",
+		"value": {
+			"event_id": "018f47d2-792e-7b1c-a720-65d74ccff101",
+			"session_id": "018f47d2-792e-7b1c-a720-65d74ccff102",
+			"turn_id": "018f47d2-792e-7b1c-a720-65d74ccff103",
+			"client_created_at": "2026-09-01T08:00:00.000Z",
+			"task_category": "Hydro",
+			"model": "hydro-chat",
+			"client_version": "0.1.0-hydro",
+			"device_id": "device-01",
+			"turn_status": "completed",
+			"user_input": "分析本地水位数据",
+			"assistant_final": "分析完成",
+			"anonymous": false,
+			"model_call_ids": ["018f47d2-792e-7b1c-a720-65d74ccff104"]
+		}
+	},
+	{
+		"schema": "ConfigureManagedProviderCommand",
+		"value": {
+			"type": "configure_managed_provider",
+			"protocolVersion": 1,
+			"runtimeId": "018f47d2-792e-7b1c-a720-65d74ccff105",
+			"catalogVersion": "catalog-1",
+			"baseUrl": "http://127.0.0.1:49152/proxy/v1",
+			"capability": "8e96f605d8fb4c13a48be0775778a709",
+			"models": [
+				{
+					"id": "hydro-chat",
+					"name": "Hydro Chat",
+					"provider": "hydro-managed",
+					"contextWindow": 131072,
+					"maxTokens": 8192,
+					"reasoning": false,
+					"input": ["text"]
+				}
+			]
+		}
+	},
+	{
+		"schema": "ConfigureManagedProviderResponse",
+		"value": {
+			"type": "response",
+			"command": "configure_managed_provider",
+			"success": false,
+			"error": "unsupported protocol",
+			"errorCode": "managed_protocol_unsupported"
+		}
+	}
+]

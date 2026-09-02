@@ -20,6 +20,18 @@ type PendingRequest = {
 /** 超过该长度的 JSONL 行延后到 setImmediate 再 JSON.parse，避免 stdout data 回调堵住主进程。 */
 export const LARGE_RPC_LINE_PARSE_CHARS = 256 * 1024;
 
+function safeOutgoingLog(payload: Record<string, unknown>): Record<string, unknown> {
+  if (payload.type !== "configure_managed_provider") return payload;
+  return {
+    type: payload.type,
+    ...(typeof payload.id === "string" ? { id: payload.id } : {}),
+    ...(typeof payload.protocolVersion === "number" ? { protocolVersion: payload.protocolVersion } : {}),
+    ...(typeof payload.runtimeId === "string" ? { runtimeId: payload.runtimeId } : {}),
+    ...(typeof payload.catalogVersion === "string" ? { catalogVersion: payload.catalogVersion } : {}),
+    modelCount: Array.isArray(payload.models) ? payload.models.length : 0,
+  };
+}
+
 export class PiRpcClient extends EventEmitter {
   private buffer = "";
   private readonly decoder = new StringDecoder("utf8");
@@ -73,7 +85,7 @@ export class PiRpcClient extends EventEmitter {
 
   private write(payload: Record<string, unknown>) {
     // 记录发出的 RPC 命令，方便调试
-    this.emit("log", { direction: "send", data: payload });
+    this.emit("log", { direction: "send", data: safeOutgoingLog(payload) });
     // pi RPC 使用严格 JSONL 协议；每条命令必须以 LF 结尾，不能依赖 readline 之类的宽松分行。
     this.stdin.write(`${JSON.stringify(payload)}\n`);
   }

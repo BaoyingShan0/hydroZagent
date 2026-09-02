@@ -25,6 +25,9 @@ import type {
 } from "../../shared/types";
 import { ipcChannels } from "../../shared/ipc";
 import { PiProcess } from "./PiProcess";
+import type { ManagedRuntimeFactory } from "../managed/runtimeRegistry";
+import type { ManagedUsageSink } from "../managed/usageReporter";
+import { managedAssistantFinal } from "../managed/usageProjection";
 import { listActiveBuiltInExtensionPaths } from "../extensions/builtInExtensions";
 import { resolveEnabledExtensionPaths } from "../extensions/enabledExtensionResolver";
 import {
@@ -330,6 +333,18 @@ export class AgentManager {
 
 	/** sendPrompt 发出的请求时刻（毫秒），供首个 message_start 起表时优先使用（含排队时间）。 */
 	private readonly promptRequestedAtByAgent = new Map<string, number>();
+	private readonly managedTurns = new Map<
+		string,
+		{
+			eventId: string;
+			turnId: string;
+			sessionId: string;
+			clientCreatedAt: string;
+			userInput: string;
+			anonymous: boolean;
+			messageStartIndex: number;
+		}
+	>();
 
 	/** 最近一次 assistant 回复的性能指标（结算后保留，供 getRuntimeState 合并展示）。 */
 	private readonly lastPerfByAgent = new Map<
@@ -414,6 +429,8 @@ export class AgentManager {
 		 * 同一 key（securitySessionKey ?? sessionPath），保证 create/reattach/临时会话行为一致。
 		 */
 		private readonly resolveSessionProxy?: (sessionKey: string | undefined) => import("../../shared/types/session").SessionProxyMode | undefined,
+		private readonly managedRuntimeFactory?: ManagedRuntimeFactory,
+		private readonly managedUsageSink?: ManagedUsageSink,
 	) {
 		this.messageProjector = new AgentMessageProjector({
 			translate: this.translate,
@@ -476,6 +493,7 @@ export class AgentManager {
 		securitySessionKey?: string,
 		settingsOverride?: Partial<Pick<AppSettings, "piRpcNoExtensions" | "piRpcNoSkills" | "removedBuiltInExtensions">>,
 	): PiProcess {
+		const managedFactory = this.managedRuntimeFactory;
 		const settings = settingsOverride
 			? { ...this.settingsStore.get(), ...settingsOverride }
 			: this.settingsStore.get();
@@ -483,6 +501,10 @@ export class AgentManager {
 			void this.securityStore.ensureSnapshotWritten();
 		}
 		return new PiProcess(cwd, settings, undefined, {
+			managed: this.managedRuntimeFactory !== undefined,
+			createManagedRuntime: managedFactory
+				? (sessionId) => managedFactory.create(sessionId)
+				: undefined,
 			resolveBuiltInExtensionPaths: (processSettings) =>
 				listActiveBuiltInExtensionPaths(
 					{
@@ -1549,6 +1571,13 @@ export class AgentManager {
 		// 判断 agent 是否已在忙碌中；运行中继续发送时必须带 streamingBehavior，
 		// 否则 pi RPC 会拒绝请求。该值也用于给用户消息打上投递语义标记。
 		const alreadyBusy = runtime.tab.status === "running";
+		if (this.managedUsageSink && alreadyBusy) {
+			return {
+				accepted: false,
+				error: "受管模式请等待当前轮次结束",
+				i18nKey: "diagnostic.promptRejected",
+			};
+		}
 		const statusBeforePrompt = runtime.tab.status;
 		const promptDeliveryBehavior = input.streamingBehavior ?? (alreadyBusy ? "steer" : undefined);
 
@@ -1564,6 +1593,30 @@ export class AgentManager {
 			);
 			this.emitState();
 			return { accepted: false, error: errorMessage, i18nKey: "diagnostic.agentStopped" };
+		}
+		if (this.managedUsageSink) {
+			const turnId = randomUUID();
+			const sessionId = uuidValue(runtime.tab.deckSessionId) ?? randomUUID();
+			try {
+				runtime.process.beginManagedTurn(turnId);
+				this.managedTurns.set(input.agentId, {
+					eventId: randomUUID(),
+					turnId,
+					sessionId,
+					clientCreatedAt: new Date().toISOString(),
+					// Preserve exactly what the user entered. Host-only agentMessage additions,
+					// image bytes and tool context are intentionally outside the P0 record.
+					userInput: input.message,
+					anonymous: runtime.tab.noSession === true,
+					messageStartIndex: (this.messages.get(input.agentId) ?? []).length,
+				});
+			} catch (error: unknown) {
+				return {
+					accepted: false,
+					error: error instanceof Error ? error.message : String(error),
+					i18nKey: "diagnostic.promptRejected",
+				};
+			}
 		}
 
 		runtime.tab.status = "running";
@@ -1623,6 +1676,7 @@ export class AgentManager {
 				rpcMs: Date.now() - rpcStartedAt,
 			});
 			if (!response.success) {
+				void this.finishManagedUsage(input.agentId, "error");
 				// pi RPC 会把不支持图片、忙碌队列参数缺失等前置错误作为 success:false 返回；
 				// 必须显式显示出来，否则 UI 会停在"已发送但无响应"的状态。
 				const errorMessage = response.error ?? "图片消息发送失败";
@@ -1652,6 +1706,7 @@ export class AgentManager {
 			}
 			return { accepted: true };
 		} catch (error) {
+			void this.finishManagedUsage(input.agentId, "error");
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			// prompt RPC 调用前已通过同步 write() 写入 pi stdin；此处所有异常都只说明
 			// preflight 响应未到达，无法证明 pi 没有接收。返回 unknown，renderer 会永久禁用
@@ -1875,6 +1930,7 @@ export class AgentManager {
 			duration: 2500,
 		});
 		this.emitState();
+		void this.finishManagedUsage(agentId, "aborted");
 	}
 
 	/**
@@ -3165,6 +3221,7 @@ export class AgentManager {
 	async stop(agentId: string) {
 		const runtime = this.agents.get(agentId);
 		if (!runtime) return;
+		void this.finishManagedUsage(agentId, "aborted");
 		void this.appLogger?.info("agent", "Agent stopped (user initiated)", {
 			agentId,
 			projectId: runtime.tab.projectId,
@@ -3244,6 +3301,44 @@ export class AgentManager {
 		}
 	}
 
+	private async finishManagedUsage(
+		agentId: string,
+		status: "completed" | "aborted" | "error",
+	): Promise<void> {
+		const turn = this.managedTurns.get(agentId);
+		const sink = this.managedUsageSink;
+		if (!turn || !sink) return;
+		this.managedTurns.delete(agentId);
+		const runtime = this.agents.get(agentId);
+		const modelCallIds = runtime?.process.finishManagedTurn(turn.turnId) ?? [];
+		const assistantFinal = managedAssistantFinal(
+			this.messages.get(agentId) ?? [],
+			turn.messageStartIndex,
+			status,
+		);
+		let model = "unknown";
+		if (runtime?.process.isRunning()) {
+			try {
+				const state = await this.getRuntimeState(agentId);
+				model = state.modelId ?? model;
+			} catch {
+				// 运行时已结束时仍上报本轮终态，不读取或上传历史。
+			}
+		}
+		sink.report({
+			eventId: turn.eventId,
+			turnId: turn.turnId,
+			sessionId: turn.sessionId,
+			clientCreatedAt: turn.clientCreatedAt,
+			userInput: turn.userInput,
+			anonymous: turn.anonymous,
+			model,
+			status,
+			assistantFinal,
+			modelCallIds,
+		});
+	}
+
 	private notifyStateListeners(tabs: AgentTab[]) {
 		for (const listener of this.stateListeners) {
 			try { listener(tabs); } catch {}
@@ -3253,6 +3348,7 @@ export class AgentManager {
 	stopAll() {
 		// 应用退出时统一清理所有 pi 子进程，避免后台 agent 残留占用模型或文件句柄。
 		for (const runtime of this.agents.values()) {
+			void this.finishManagedUsage(runtime.tab.id, "aborted");
 			this.userInitiatedStop.add(runtime.tab.id);
 			this.clearAgentState(runtime.tab.id);
 			runtime.process.stop();
@@ -3367,6 +3463,7 @@ export class AgentManager {
 		});
 		piProcess.on("exit", (payload: { code: number | null; signal: string | null }) => {
 			try {
+				void this.finishManagedUsage(agentId, "error");
 				void this.appLogger?.info("agent", "Pi process exit", {
 					agentId,
 					code: payload.code,
@@ -3398,6 +3495,7 @@ export class AgentManager {
 				return;
 			}
 			const runtime = this.agents.get(agentId);
+			void this.finishManagedUsage(agentId, "error");
 			if (runtime) runtime.tab.status = "error";
 			const message = error instanceof Error ? error.message : String(error);
 			void this.appLogger?.error("agent", "Pi process error", {
@@ -3880,6 +3978,12 @@ export class AgentManager {
 			// 两者任一命中都说明本轮被用户中止，不得触发「已完成」提醒。
 			const isAbortSettled =
 				this.recentlyAborted.has(agentId) || this.abortSettledFallbackTimers.has(agentId);
+			const managedStatus = isAbortSettled
+				? "aborted"
+				: runtime?.tab.status === "error"
+					? "error"
+					: "completed";
+			void this.finishManagedUsage(agentId, managedStatus);
 			this.noteAgentAbortSettled(agentId);
 			this.recentlyAborted.delete(agentId);
 			if (runtime && runtime.tab.status !== "error" && runtime.tab.status !== "closed") {
@@ -5775,3 +5879,9 @@ type AgentRuntime = {
 	tab: AgentTab;
 	process: PiProcess;
 };
+
+function uuidValue(value: string | undefined): string | null {
+	return value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value)
+		? value
+		: null;
+}

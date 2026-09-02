@@ -94,6 +94,7 @@ export type SidebarContentProps = {
   branchByProject?: Readonly<Record<string, string | null | undefined>>;
   creatingWorktree?: boolean;
   isLanWeb?: boolean;
+  managedMode?: boolean;
   chrome?: ReactNode;
   onOpenSettings?: () => void;
   onOpenConfig?: () => void;
@@ -197,8 +198,8 @@ export function SidebarContent(props: SidebarContentProps) {
       {!props.isLanWeb && (
         <div className="toolbar-actions sidebar-bottom-actions flex shrink-0 items-center gap-0 border-t border-border/40 px-0.5 py-0">
           <div className="sidebar-bottom-primary-actions flex min-w-0 flex-1 items-center gap-0">
-            <Button type="button" variant="ghost" size="icon-sm" className="icon-button settings-icon size-8 rounded-none text-muted-foreground hover:bg-muted hover:text-foreground" title={t("settings.title")} aria-label={t("settings.title")} onClick={props.onOpenSettings}><Settings className="size-4" /></Button>
-            <Button type="button" variant="ghost" size="icon-sm" className="icon-button config-icon size-8 rounded-none text-muted-foreground hover:bg-muted hover:text-foreground" title={t("config.title")} aria-label={t("config.title")} onClick={props.onOpenConfig}><Sliders className="size-4" /></Button>
+            {!props.managedMode && <Button type="button" variant="ghost" size="icon-sm" className="icon-button settings-icon size-8 rounded-none text-muted-foreground hover:bg-muted hover:text-foreground" title={t("settings.title")} aria-label={t("settings.title")} onClick={props.onOpenSettings}><Settings className="size-4" /></Button>}
+            {!props.managedMode && <Button type="button" variant="ghost" size="icon-sm" className="icon-button config-icon size-8 rounded-none text-muted-foreground hover:bg-muted hover:text-foreground" title={t("config.title")} aria-label={t("config.title")} onClick={props.onOpenConfig}><Sliders className="size-4" /></Button>}
             <Button type="button" variant="ghost" size="icon-sm" className="icon-button feedback-icon size-8 rounded-none text-muted-foreground hover:bg-muted hover:text-foreground" title={t("feedback.title")} aria-label={t("feedback.title")} onClick={props.onOpenFeedback}><MessageSquare className="size-4" /></Button>
             <Button type="button" variant="ghost" size="icon-sm" className="icon-button homepage-icon size-8 rounded-none text-muted-foreground hover:bg-muted hover:text-foreground" title={t("app.homepage")} aria-label={t("app.homepage")} onClick={props.onOpenHomepage}><Globe className="size-4" /></Button>
           </div>
@@ -232,6 +233,7 @@ export function SidebarContent(props: SidebarContentProps) {
           onRefreshProject={() => { void actions.projects.refresh(menuProject.id); controller.closeMenu(); }}
           onCopyProjectPath={() => { void actions.projects.copyPath(menuProject); controller.closeMenu(); }}
           onRemoveProject={() => { void actions.projects.remove(menuProject); controller.closeMenu(); }}
+          managedMode={props.managedMode}
         />
       )}
       {menuAgent && menu?.kind === "agent" && (
@@ -271,6 +273,7 @@ export function SidebarContent(props: SidebarContentProps) {
           }}
           isRpcLogging={controller.isAgentRpcLogging(menuAgent.id)}
           rpcToggleDisabled={!menuAgentCanRpcLog}
+          allowRpcLogging={!props.managedMode}
           onOpenLogs={() => { controller.openRpcLogs(menuAgent.id); controller.closeMenu(); }}
           onCloseAgent={() => { void actions.agents.close(menuAgent); controller.closeMenu(); }}
           onDeleteSession={() => {
@@ -304,14 +307,16 @@ export function SidebarContent(props: SidebarContentProps) {
           menu={{ x: menu.x, y: menu.y, session: menuSession }}
           onClose={controller.closeMenu}
           onRename={() => { actions.sessions.rename(menu.projectId, menuSession); controller.closeMenu(); }}
-          onOpenProxySetting={() => { controller.closeMenu(); setProxyDialogSessionId(menuSession.id); }}
+		  onOpenProxySetting={() => { controller.closeMenu(); setProxyDialogSessionId(menuSession.id); }}
+		  allowProxySetting={!props.managedMode}
+		  allowRpcLogging={!props.managedMode}
           onExport={() => { void actions.sessions.export(menu.projectId, menuSession); controller.closeMenu(); }}
           onCopySession={() => { void actions.sessions.copy(menu.projectId, menuSession); controller.closeMenu(); }}
           onCopySessionFilePath={() => { void actions.sessions.copyPath(menuSession); controller.closeMenu(); }}
           onOpenSessionFile={() => { void actions.sessions.openFile(menuSession); controller.closeMenu(); }}
           // F5：DSH 会话无 filePath 但可复制 host 会话文件路径（主进程按 dshSessionId 推导）
           hasFilePath={Boolean(menuSession.filePath) || menuSession.backend === "dsh"}
-          canRpcLog={Boolean(menuSessionRuntimeAgent)}
+		  canRpcLog={Boolean(menuSessionRuntimeAgent)}
           rpcToggleDisabled={!menuSessionRuntimeAgent}
           isRpcLogging={menuSessionRuntimeAgent ? controller.isAgentRpcLogging(menuSessionRuntimeAgent.id) : false}
           onToggleRpcLogging={() => {
@@ -348,7 +353,7 @@ export function SidebarContent(props: SidebarContentProps) {
         />
       )}
       {/* 会话代理设置弹框（菜单项「会话代理」打开；会话 id 为 null 时关闭） */}
-      {proxyDialogSessionId && (
+      {!props.managedMode && proxyDialogSessionId && (
         <SessionProxyDialog
           sessionId={proxyDialogSessionId}
           onClose={() => setProxyDialogSessionId(null)}
@@ -378,7 +383,7 @@ export function SidebarContent(props: SidebarContentProps) {
           onClose={controller.closeWorktreeCreate}
         />
       )}
-      {controller.rpcLogAgentId && (
+      {!props.managedMode && controller.rpcLogAgentId && (
         <RpcLogViewer
           agentId={controller.rpcLogAgentId}
           loadHistory={actions.rpc.listLogs}
@@ -388,7 +393,7 @@ export function SidebarContent(props: SidebarContentProps) {
         />
       )}
       {/* “RPC 日志已打开”提醒：点击菜单后弹框，可直达日志查看弹窗 */}
-      {rpcLogOpenedAgentId && (
+      {!props.managedMode && rpcLogOpenedAgentId && (
         <RpcLogOpenedDialog
           onView={() => {
             controller.openRpcLogs(rpcLogOpenedAgentId);

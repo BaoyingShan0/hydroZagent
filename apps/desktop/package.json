@@ -65,6 +65,8 @@
     "dist": "npm run build && electron-builder",
     "dist:win": "node scripts/dist-win.js",
     "dist:win:dev": "node scripts/dist-win-dev.js",
+    "dist:managed": "node scripts/dist-win-managed.js",
+    "check:managed-artifact": "node scripts/check-managed-artifact.cjs",
     "dist:mac": "npm run build && electron-builder --mac dmg zip",
     "dist:linux": "npm run build && electron-builder --linux AppImage deb tar.gz",
     "preview": "electron-vite preview",

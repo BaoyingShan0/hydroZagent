@@ -27,10 +27,11 @@ function loadWslPaths() {
  * 沙箱加载 PiProcess：mock spawn 以捕获传入子进程的环境变量，mock locator 让 resolveCommand
  * 返回 "wsl://" 触发 WSL 分支，其余依赖（fs/extensions/logging）给最小桩，避免触碰真实文件系统。
  */
-function loadPiProcess() {
+function loadPiProcess(options = {}) {
 	const wslPaths = loadWslPaths();
 	/** spawn 收到的 env/args；mockSpawn 被调用时写入 */
 	let captured = null;
+	let killed = 0;
 	const mockSpawn = (_command, args, opts) => {
 		captured = { env: opts?.env ?? null, args: args ?? null };
 		// 返回一个最小 ChildProcess 形状：PiProcess 后续会 new PiRpcClient(proc.stdin/stdout)
@@ -40,18 +41,22 @@ function loadPiProcess() {
 			stdout: new PassThrough(),
 			stderr: new PassThrough(),
 			on() {},
-			kill() {},
+			kill() { killed += 1; },
 			pid: 12345,
 		};
 	};
 	class MockRpcClient {
 		on() { return this; }
 		close() {}
-		request() { return Promise.resolve({ success: true, data: {} }); }
+		request() {
+			if (options.managedRequestError) return Promise.reject(options.managedRequestError);
+			return Promise.resolve(options.managedResponse ?? { success: true, data: {} });
+		}
 	}
 	// locator 决定 command 是否进入 WSL 分支；createProcessEnv 给空 env 让注入逻辑可观测
 	const mockLocator = {
 		resolveCommand: () => "wsl://pi",
+		resolveManagedCommand: () => "C:\\managed\\pi.exe",
 		createInvocation: (command, args) => ({
 			command,
 			args,
@@ -60,7 +65,7 @@ function loadPiProcess() {
 			wsl: true,
 			windowsVerbatimArguments: false,
 		}),
-		createProcessEnv: () => ({}),
+		createProcessEnv: () => ({ ...(options.processEnv ?? {}) }),
 	};
 	const sandbox = {
 		Buffer,
@@ -101,7 +106,12 @@ function loadPiProcess() {
 		},
 	};
 	vm.runInNewContext(transpile("src/main/pi/PiProcess.ts"), sandbox, { filename: "PiProcess.ts" });
-	return { PiProcess: sandbox.exports.PiProcess, mockLocator, getCaptured: () => captured };
+	return {
+		PiProcess: sandbox.exports.PiProcess,
+		mockLocator,
+		getCaptured: () => captured,
+		getKilled: () => killed,
+	};
 }
 
 test("WSL 模式下 PIDECK_SESSION_ID（UUID 身份 key）原样注入，不经 Linux 路径转换", async () => {
@@ -175,4 +185,41 @@ test("白名单总开关 disableExtensionWhitelist=true 时不再注入 --no-ext
 	assert.ok(captured?.args, "spawn 应被调用");
 	assert.ok(!captured.args.includes("--no-extensions"), "总开关开启时不应注入 --no-extensions");
 	assert.ok(!captured.args.includes("--extension"), "总开关开启时不应注入 --extension");
+});
+
+test("managed provider handshake failure kills Pi, destroys capability, and strips host secrets", async () => {
+	const handshakeError = new Error("managed handshake timeout");
+	const { PiProcess, mockLocator, getKilled, getCaptured } = loadPiProcess({
+		managedRequestError: handshakeError,
+		processEnv: {
+			PATH: "C:\\Windows\\System32",
+			OPENAI_API_KEY: "must-not-leak",
+			AWS_SECRET_ACCESS_KEY: "must-not-leak",
+			AWS_PROFILE: "must-not-load-local-credentials",
+			CUSTOM_SERVICE_TOKEN: "must-not-leak",
+			HYDROZAGENT_PI_CLI_PATH: "C:\\replacement\\pi.exe",
+		},
+	});
+	let closed = 0;
+	const lease = {
+		configuration: () => ({ type: "configure_managed_provider" }),
+		beginTurn() {},
+		finishTurn: () => [],
+		close: async () => { closed += 1; },
+	};
+	const proc = new PiProcess(
+		"C:\\project",
+		{},
+		mockLocator,
+		{ managed: true, createManagedRuntime: async () => lease },
+	);
+
+	await assert.rejects(proc.start(undefined, undefined, true), /managed handshake timeout/);
+	const env = getCaptured()?.env;
+	assert.equal(env?.PATH, "C:\\Windows\\System32");
+	for (const name of ["OPENAI_API_KEY", "AWS_SECRET_ACCESS_KEY", "AWS_PROFILE", "CUSTOM_SERVICE_TOKEN", "HYDROZAGENT_PI_CLI_PATH"]) {
+		assert.equal(env?.[name], undefined, `${name} must not reach managed Pi`);
+	}
+	assert.equal(getKilled(), 1);
+	assert.equal(closed, 1);
 });

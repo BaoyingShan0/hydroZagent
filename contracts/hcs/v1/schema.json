@@ -1,0 +1,356 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://hydrozagent.internal/contracts/hcs/v1/schema.json",
+	"title": "Hydro Control Server v1 contracts",
+	"$defs": {
+		"HcsErrorCode": {
+			"enum": [
+				"invalid_request",
+				"unauthorized",
+				"consent_required",
+				"account_disabled",
+				"account_locked",
+				"rate_limited",
+				"quota_exceeded",
+				"model_not_allowed",
+				"upstream_error",
+				"payload_too_large",
+				"catalog_unavailable",
+				"duplicate_event"
+			]
+		},
+		"ManagedProviderErrorCode": {
+			"enum": [
+				"managed_protocol_unsupported",
+				"managed_config_invalid",
+				"managed_runtime_started"
+			]
+		},
+		"ThinkingLevel": {
+			"enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max"]
+		},
+		"OpenAICompletionsCompat": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"supportsStore": { "type": "boolean" },
+				"supportsDeveloperRole": { "type": "boolean" },
+				"supportsReasoningEffort": { "type": "boolean" },
+				"supportsUsageInStreaming": { "type": "boolean" },
+				"supportsFinishReason": { "type": "boolean" },
+				"maxTokensField": { "enum": ["max_completion_tokens", "max_tokens"] },
+				"requiresToolResultName": { "type": "boolean" },
+				"requiresAssistantAfterToolResult": { "type": "boolean" },
+				"requiresThinkingAsText": { "type": "boolean" },
+				"requiresReasoningContentOnAssistantMessages": { "type": "boolean" },
+				"thinkingFormat": {
+					"enum": [
+						"openai",
+						"openrouter",
+						"deepseek",
+						"together",
+						"baseten",
+						"zai",
+						"qwen",
+						"chat-template",
+						"qwen-chat-template",
+						"string-thinking",
+						"ant-ling"
+					]
+				},
+				"zaiToolStream": { "type": "boolean" },
+				"supportsThinkingTokenBudget": { "type": "boolean" },
+				"supportsOpenAIGrammarTools": { "type": "boolean" },
+				"supportsStrictMode": { "type": "boolean" },
+				"cacheControlFormat": { "const": "anthropic" },
+				"sendSessionAffinityHeaders": { "type": "boolean" },
+				"deferredToolsMode": { "const": "kimi" },
+				"sessionAffinityFormat": {
+					"enum": ["openai", "openai-nosession", "openrouter"]
+				},
+				"supportsLongCacheRetention": { "type": "boolean" }
+			}
+		},
+		"ThinkingLevelMap": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"off": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+				"minimal": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+				"low": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+				"medium": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+				"high": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+				"xhigh": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+				"max": { "oneOf": [{ "type": "string" }, { "type": "null" }] }
+			}
+		},
+		"ManagedModel": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "name", "provider", "contextWindow", "maxTokens", "reasoning", "input"],
+			"properties": {
+				"id": { "type": "string", "minLength": 1, "maxLength": 128 },
+				"name": { "type": "string", "minLength": 1, "maxLength": 128 },
+				"provider": { "const": "hydro-managed" },
+				"contextWindow": { "type": "integer", "minimum": 1 },
+				"maxTokens": { "type": "integer", "minimum": 1 },
+				"reasoning": { "type": "boolean" },
+				"input": {
+					"type": "array",
+					"items": { "enum": ["text", "image"] },
+					"minItems": 1,
+					"uniqueItems": true
+				},
+				"thinkingLevelMap": { "$ref": "#/$defs/ThinkingLevelMap" },
+				"defaultThinkingLevel": { "$ref": "#/$defs/ThinkingLevel" },
+				"compat": { "$ref": "#/$defs/OpenAICompletionsCompat" }
+			}
+		},
+		"UserSummary": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "username", "role", "is_self_reported"],
+			"properties": {
+				"id": { "type": "string", "format": "uuid" },
+				"username": { "type": "string" },
+				"role": { "enum": ["user", "admin"] },
+				"is_self_reported": { "type": "boolean" }
+			}
+		},
+		"RegisterRequest": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["username", "password", "device_id", "client_version"],
+			"properties": {
+				"username": {
+					"type": "string",
+					"minLength": 3,
+					"maxLength": 64,
+					"pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+				},
+				"password": { "type": "string", "minLength": 12, "maxLength": 128 },
+				"device_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+				"client_version": { "type": "string", "minLength": 1, "maxLength": 64 }
+			}
+		},
+		"LoginRequest": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["username", "password", "device_id", "client_version"],
+			"properties": {
+				"username": { "type": "string", "minLength": 1, "maxLength": 64 },
+				"password": { "type": "string", "minLength": 1, "maxLength": 128 },
+				"device_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+				"client_version": { "type": "string", "minLength": 1, "maxLength": 64 }
+			}
+		},
+		"RefreshRequest": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["refresh_token"],
+			"properties": {
+				"refresh_token": { "type": "string", "minLength": 32, "maxLength": 512 }
+			}
+		},
+		"AuthTokensResponse": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["access_token", "refresh_token", "token_type", "expires_in", "user"],
+			"properties": {
+				"access_token": { "type": "string", "minLength": 1 },
+				"refresh_token": { "type": "string", "minLength": 32 },
+				"token_type": { "const": "Bearer" },
+				"expires_in": { "type": "integer", "minimum": 1 },
+				"user": { "$ref": "#/$defs/UserSummary" }
+			}
+		},
+		"PasswordResetConfirmRequest": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["reset_token", "new_password"],
+			"properties": {
+				"reset_token": { "type": "string", "minLength": 32, "maxLength": 512 },
+				"new_password": { "type": "string", "minLength": 12, "maxLength": 128 }
+			}
+		},
+		"AcceptedResponse": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["accepted"],
+			"properties": { "accepted": { "const": true } }
+		},
+		"NoticeResponse": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["notice_version", "text"],
+			"properties": {
+				"notice_version": { "type": "string", "minLength": 1, "maxLength": 64 },
+				"text": { "type": "string", "minLength": 1, "maxLength": 32768 }
+			}
+		},
+		"ConsentRequest": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["notice_version", "client_version"],
+			"properties": {
+				"notice_version": { "type": "string", "minLength": 1, "maxLength": 64 },
+				"client_version": { "type": "string", "minLength": 1, "maxLength": 64 }
+			}
+		},
+		"ManagedModelsResponse": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["catalog_version", "expires_at", "models"],
+			"properties": {
+				"catalog_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+				"expires_at": { "type": "string", "format": "date-time" },
+				"models": { "type": "array", "items": { "$ref": "#/$defs/ManagedModel" } }
+			}
+		},
+		"ManagedChatCompletionsRequest": {
+			"type": "object",
+			"additionalProperties": true,
+			"required": ["model", "messages"],
+			"properties": {
+				"model": { "type": "string", "minLength": 1, "maxLength": 128 },
+				"messages": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "type": "object", "additionalProperties": true }
+				},
+				"stream": { "type": "boolean" }
+			}
+		},
+		"UsageIngestRequest": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"event_id",
+				"session_id",
+				"turn_id",
+				"client_created_at",
+				"task_category",
+				"model",
+				"client_version",
+				"device_id",
+				"turn_status",
+				"user_input",
+				"anonymous",
+				"model_call_ids"
+			],
+			"properties": {
+				"event_id": { "type": "string", "format": "uuid" },
+				"session_id": { "type": "string", "format": "uuid" },
+				"turn_id": { "type": "string", "format": "uuid" },
+				"client_created_at": { "type": "string", "format": "date-time" },
+				"task_category": {
+					"enum": ["Coding", "Hydro", "Document", "Data", "Operations", "Knowledge"]
+				},
+				"model": { "type": "string", "minLength": 1, "maxLength": 128 },
+				"client_version": { "type": "string", "minLength": 1, "maxLength": 64 },
+				"device_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+				"turn_status": { "enum": ["completed", "aborted", "error"] },
+				"user_input": { "type": "string", "maxLength": 1048576 },
+				"assistant_final": {
+					"oneOf": [{ "type": "string", "maxLength": 1048576 }, { "type": "null" }]
+				},
+				"anonymous": { "type": "boolean" },
+				"model_call_ids": {
+					"type": "array",
+					"items": { "type": "string", "format": "uuid" },
+					"maxItems": 128,
+					"uniqueItems": true
+				}
+			}
+		},
+		"UsageIngestResponse": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["accepted", "deduplicated"],
+			"properties": {
+				"accepted": { "const": true },
+				"deduplicated": { "type": "boolean" }
+			}
+		},
+		"ErrorResponse": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["error"],
+			"properties": {
+				"error": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["code", "message"],
+					"properties": {
+						"code": { "$ref": "#/$defs/HcsErrorCode" },
+						"message": { "type": "string", "minLength": 1, "maxLength": 512 }
+					}
+				}
+			}
+		},
+		"HealthResponse": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["status", "service"],
+			"properties": {
+				"status": { "enum": ["ok", "ready", "not_ready"] },
+				"service": { "const": "hydro-control-server" }
+			}
+		},
+		"ConfigureManagedProviderCommand": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["type", "protocolVersion", "runtimeId", "catalogVersion", "baseUrl", "capability", "models"],
+			"properties": {
+				"id": { "type": "string" },
+				"type": { "const": "configure_managed_provider" },
+				"protocolVersion": { "const": 1 },
+				"runtimeId": { "type": "string", "format": "uuid" },
+				"catalogVersion": { "type": "string", "minLength": 1, "maxLength": 128 },
+				"baseUrl": { "type": "string", "pattern": "^http://127\\.0\\.0\\.1:[0-9]{1,5}/proxy/v1$" },
+				"capability": { "type": "string", "minLength": 32, "maxLength": 512 },
+				"models": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/ManagedModel" } }
+			}
+		},
+		"ConfigureManagedProviderSuccess": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["type", "command", "success", "data"],
+			"properties": {
+				"id": { "type": "string" },
+				"type": { "const": "response" },
+				"command": { "const": "configure_managed_provider" },
+				"success": { "const": true },
+				"data": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["configured", "protocolVersion", "catalogVersion"],
+					"properties": {
+						"configured": { "const": true },
+						"protocolVersion": { "const": 1 },
+						"catalogVersion": { "type": "string", "minLength": 1 }
+					}
+				}
+			}
+		},
+		"ConfigureManagedProviderFailure": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["type", "command", "success", "error", "errorCode"],
+			"properties": {
+				"id": { "type": "string" },
+				"type": { "const": "response" },
+				"command": { "const": "configure_managed_provider" },
+				"success": { "const": false },
+				"error": { "type": "string", "minLength": 1, "maxLength": 512 },
+				"errorCode": { "$ref": "#/$defs/ManagedProviderErrorCode" }
+			}
+		},
+		"ConfigureManagedProviderResponse": {
+			"oneOf": [
+				{ "$ref": "#/$defs/ConfigureManagedProviderSuccess" },
+				{ "$ref": "#/$defs/ConfigureManagedProviderFailure" }
+			]
+		}
+	}
+}

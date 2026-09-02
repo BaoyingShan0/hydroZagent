@@ -13,6 +13,11 @@
 		"packages/coding-agent/examples/extensions/gondolin"
 	],
 	"scripts": {
+		"hcs:contracts:generate": "node scripts/generate-hcs-contracts.mjs",
+		"hcs:contracts:check": "node scripts/check-hcs-contracts.mjs",
+		"hcs:check": "npm run hcs:contracts:check && npm --prefix apps/server run check",
+		"hcs:test": "npm --prefix apps/server test",
+		"hcs:deploy:check": "node scripts/check-hcs-deploy.mjs",
 		"desktop:dev": "node scripts/dev-desktop.mjs",
 		"desktop:install": "npm --prefix apps/desktop install --ignore-scripts && node apps/desktop/node_modules/electron/install.js",
 		"desktop:prepare": "npm run build:offline",
@@ -20,6 +25,7 @@
 		"desktop:test": "npm --prefix apps/desktop test",
 		"desktop:runtime": "npm --prefix packages/coding-agent run build:binary",
 		"desktop:dist": "npm run desktop:runtime && npm --prefix apps/desktop run dist",
+		"desktop:dist:managed": "npm run desktop:runtime && npm --prefix apps/desktop run dist:managed",
 		"clean": "npm run clean --workspaces",
 		"build": "cd packages/tui && npm run build && cd ../telemetry && npm run build && cd ../ai && npm run build && cd ../agent && npm run build && cd ../session-backends/sqlite-node && npm run build && cd ../../protocol && npm run build && cd ../client && npm run build && cd ../server && npm run build && cd ../coding-agent && npm run build",
 		"build:offline": "cd packages/tui && npm run build && cd ../telemetry && npm run build && cd ../ai && npm run build:offline && cd ../agent && npm run build && cd ../session-backends/sqlite-node && npm run build && cd ../../protocol && npm run build && cd ../client && npm run build && cd ../server && npm run build && cd ../coding-agent && npm run build",

@@ -1,4 +1,5 @@
 import { execFile, spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -16,6 +17,7 @@ import { appendBuiltInExtensionArgs } from "../extensions/builtInExtensions";
 import { MIN_PI_MINOR_VERSION_FOR_EXTENSION_WHITELIST } from "../extensions/extensionVersionGate";
 import { getAppLogger } from "../logging/sharedLogger";
 import { applyPiProxyMode } from "../sessions/sessionProxyPolicy";
+import type { ManagedRuntimeLease } from "../managed/runtimeRegistry";
 
 type PiProcessSettings = Pick<
   AppSettings,
@@ -36,12 +38,28 @@ type PiProcessSettings = Pick<
 
 type PiProcessLocator = Pick<
   PiLocator,
-  "resolveCommand" | "createInvocation" | "createProcessEnv"
+  "resolveCommand" | "resolveManagedCommand" | "createInvocation" | "createProcessEnv"
 > & Partial<Pick<PiLocator, "warmWslCommand">>;
+
+function managedProcessEnvironment(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const result: NodeJS.ProcessEnv = { ...source };
+  const providerPrefix = /^(?:OPENAI|ANTHROPIC|GEMINI|GOOGLE|GCLOUD|GCP|AZURE|AWS|BEDROCK|DEEPSEEK|OPENROUTER|GROQ|MISTRAL|TOGETHER|COHERE|CEREBRAS|XAI|HUGGINGFACE|HF)_/iu;
+  const secretSuffix = /(?:^|_)(?:API_KEY|ACCESS_KEY|PRIVATE_KEY|ACCESS_TOKEN|AUTH_TOKEN|SESSION_TOKEN|TOKEN|SECRET|PASSWORD|CREDENTIALS?)$/iu;
+  for (const name of Object.keys(result)) {
+    // 受管 Pi 只需要普通进程环境。模型供应商前缀与通用 secret 后缀一律移除，
+    // 同时阻断 SDK 通过 AWS_PROFILE / GOOGLE_APPLICATION_CREDENTIALS 等间接加载宿主凭证。
+    if (providerPrefix.test(name) || secretSuffix.test(name)) delete result[name];
+  }
+  delete result.HYDROZAGENT_PI_CLI_PATH;
+  delete result.HYDROZAGENT_NODE_EXECUTABLE;
+  return result;
+}
 
 
 /** 可选：覆盖扩展扫描用的用户 home（WSL 映射 Windows home 时传入）。 */
 type PiProcessOptions = {
+	managed?: boolean;
+	createManagedRuntime?: (sessionId: string) => Promise<ManagedRuntimeLease>;
   agentHomeDir?: string;
   /**
    * 解析当前应通过 -e 注入的 PiDeck 内置扩展绝对路径。
@@ -95,6 +113,7 @@ type VersionCacheEntry =
 export class PiProcess extends EventEmitter {
   private proc?: ChildProcessWithoutNullStreams;
   private rpc?: PiRpcClient;
+  private managedLease?: ManagedRuntimeLease;
   /** 从 --version 解析出的次版本号（第二段），用于启动诊断和信任标志兼容性判断。 */
   private piMinorVersion: number | null = null;
   /**
@@ -238,18 +257,21 @@ export class PiProcess extends EventEmitter {
     // 信任确认由桌面端 AgentManager.ensureProjectTrust 在启动 pi 前完成，不再静默 --approve。
     // pi 在 RPC 模式下 project_trust 事件 hasUI 恒为 false，故信任弹窗由桌面端自行处理。
     const args = ["--mode", "rpc"];
+    if (this.options.managed) {
+      args.push("--managed", "--offline", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes");
+    }
     // RPC 无 TUI，不需要主题发现/加载；跳过可少扫用户/项目/package themes，加快冷启动。
-    args.push("--no-themes");
+    if (!this.options.managed) args.push("--no-themes");
     // 桌面端模型列表来自本地 models.json；默认 --offline 跳过 pi 启动期模型目录网络刷新。
-    if (this.settings?.piRpcOffline !== false) args.push("--offline");
+    if (!this.options.managed && this.settings?.piRpcOffline !== false) args.push("--offline");
 
     // 诊断开关：坏扩展/技能有时会拖垮 RPC 初始化；用户可在开发设置临时关闭后重试。
     // piRpcNoExtensions（总开关）优先：关闭后连白名单注入也不做，保证诊断路径干净。
-    if (this.settings?.piRpcNoExtensions) args.push("--no-extensions");
-    if (this.settings?.piRpcNoSkills) args.push("--no-skills");
+    if (!this.options.managed && this.settings?.piRpcNoExtensions) args.push("--no-extensions");
+    if (!this.options.managed && this.settings?.piRpcNoSkills) args.push("--no-skills");
 
     // 仅临时停放 codeisland 等黑名单扩展文件；npm packages 与其它本地扩展照常加载。
-    const blockedNames = this.parkIncompatibleExtensions();
+    const blockedNames = this.options.managed ? [] : this.parkIncompatibleExtensions();
     if (blockedNames.length > 0) {
       // 黑名单扩展被停放属于启动诊断事件，同步写入日志文件便于排查 RPC 初始化失败
       void getAppLogger()?.warn("pi-process", "Desktop-incompatible extensions parked for RPC", {
@@ -268,7 +290,9 @@ export class PiProcess extends EventEmitter {
     // 恢复 pi 默认发现加载全部扩展，防御个别扩展的白名单注入导致 RPC 启动失败。
     // 此处只计算列表，实际注入推迟到版本门槛检查之后（见下方 version gate），
     // 确保在拿到 command + versionCache 后统一决定。
-    const whitelistPaths = this.options.resolveEnabledExtensionPaths?.(this.settings, this.cwd) ?? null;
+    const whitelistPaths = this.options.managed
+      ? null
+      : this.options.resolveEnabledExtensionPaths?.(this.settings, this.cwd) ?? null;
     const useWhitelist =
       whitelistPaths !== null &&
       whitelistPaths !== undefined &&
@@ -277,7 +301,7 @@ export class PiProcess extends EventEmitter {
 
     // PiDeck 内置扩展：从 app resources 以 -e 注入，不再复制到 ~/.pi/agent/extensions。
     // piRpcNoExtensions 或白名单模式时不再单独注入（白名单列表已包含内置扩展）。
-    const builtInPaths = this.options.resolveBuiltInExtensionPaths?.(this.settings) ?? [];
+    const builtInPaths = this.options.managed ? [] : this.options.resolveBuiltInExtensionPaths?.(this.settings) ?? [];
     const argsWithBuiltIns = useWhitelist
       ? args
       : appendBuiltInExtensionArgs(args, builtInPaths, {
@@ -306,10 +330,12 @@ export class PiProcess extends EventEmitter {
 
     // 用户手动指定的 pi 路径优先于自动检测，解决 npm global、nvm 等路径未在 PATH 中的问题。
     // spawn 前再预热一次 WSL which：启动窗口已显示时异步等待可接受，不能同步 which。
-    if (this.settings?.wslEnabled && this.settings.wslDistro && this.settings.wslUser) {
+    if (!this.options.managed && this.settings?.wslEnabled && this.settings.wslDistro && this.settings.wslUser) {
       await this.locator.warmWslCommand?.(this.settings.wslDistro, this.settings.wslUser);
     }
-    const command = this.locator.resolveCommand(this.settings?.customPiPath, this.settings?.wslEnabled, this.settings?.wslDistro, this.settings?.wslUser);
+    const command = this.options.managed
+      ? this.locator.resolveManagedCommand()
+      : this.locator.resolveCommand(this.settings?.customPiPath, this.settings?.wslEnabled, this.settings?.wslDistro, this.settings?.wslUser);
 
     // 信任覆盖：用 --approve/--no-approve 覆盖 pi 的 trustStore 决策（本次生效，不落盘）。
     // trust-session 用 --approve 让 pi 本次加载项目资源；deny 用 --no-approve 以不信任模式启动。
@@ -439,14 +465,17 @@ export class PiProcess extends EventEmitter {
     //   UUID 既非 UNC/盘符/绝对 Linux 路径，喂给 toWslLinuxPath 会抛 INVALID_WSL_PATH，
     //   导致 WSL 下临时会话（deckSessionId=UUID、无 sessionPath 兜底）在 spawn 前就崩、起不来。
     // 会话级代理覆盖：先按单会话开关改写设置（on/off），再走 createProcessEnv 注入标准代理 env。
-    const effectiveSettings = applyPiProxyMode(this.settings, this.options.proxyOverride);
+    const effectiveSettings = this.options.managed
+      ? undefined
+      : applyPiProxyMode(this.settings, this.options.proxyOverride);
     if (this.options.proxyOverride === "on" && this.settings && !this.settings.piProxyUrl.trim()) {
       // on 但全局 URL 为空：applyPiProxyEnv 会因空 URL 直接放行（直连），留日志便于排查。
       void getAppLogger()?.warn("pi-process", "Session proxy override 'on' but global proxy URL is empty: falling back to direct", {
         sessionKey: this.options.securitySessionId,
       });
     }
-    const env = this.locator.createProcessEnv(effectiveSettings, invocation.pathPrefix, invocation.wsl);
+    const baseEnv = this.locator.createProcessEnv(effectiveSettings, invocation.pathPrefix, invocation.wsl);
+    const env = this.options.managed ? managedProcessEnvironment(baseEnv) : baseEnv;
     if (this.options.securitySnapshotPath) {
       env.PIDECK_SECURITY_CONFIG = command.startsWith("wsl://")
         ? toWslLinuxPath(this.options.securitySnapshotPath, { distro: this.settings?.wslDistro ?? "" })
@@ -465,6 +494,12 @@ export class PiProcess extends EventEmitter {
     // Windows 下通过 PiLocator.createInvocation 显式包裹含空格的 npm shim 路径，避免 cmd 拆分路径导致 agent 启动失败。
     // spawn 本身很少同步抛错（ENOENT 等多半异步 error 事件），但 cwd 非法等仍可能同步失败，必须捕获。
     try {
+      if (this.options.managed) {
+        if (!this.options.createManagedRuntime) throw new Error("受管运行时工厂不可用");
+        this.managedLease = await this.options.createManagedRuntime(
+          this.options.securitySessionId ?? sessionPath ?? randomUUID(),
+        );
+      }
       this.proc = spawn(invocation.command, finalArgs, {
         cwd: spawnCwd,
         stdio: ["pipe", "pipe", "pipe"],
@@ -481,6 +516,7 @@ export class PiProcess extends EventEmitter {
       }
       // spawn 失败也要还原停放的扩展，避免 codeisland 永久消失。
       this.restoreParkedExtensions();
+      await this.closeManagedLease();
       // 同步失败也走 error 通道，让 AgentManager 能把诊断写到会话卡片而不是主进程崩掉。
       this.emit("error", err);
       throw err;
@@ -514,6 +550,7 @@ export class PiProcess extends EventEmitter {
         if (this.diagnostics.exitCode === null) this.diagnostics.exitCode = -1;
       }
       this.emit("error", error);
+      void this.closeManagedLease();
     });
     this.proc.on("exit", (code, signal) => {
       // 退出时更新诊断信息
@@ -525,9 +562,25 @@ export class PiProcess extends EventEmitter {
       this.restoreParkedExtensions();
       this.rpc?.close(new Error(`pi exited: code=${code ?? "null"}, signal=${signal ?? "null"}`));
       this.emit("exit", { code, signal });
+      void this.closeManagedLease();
       this.proc = undefined;
       this.rpc = undefined;
     });
+
+    if (this.managedLease) {
+      try {
+        const configured = await this.rpc.request(this.managedLease.configuration(), 30_000);
+        if (!configured.success) {
+          throw new Error(configured.error ?? "受管 Pi Provider 配置失败");
+        }
+      } catch (error: unknown) {
+        // 配置握手是受管运行时的授权闸门。超时、协议错误和显式拒绝都必须同时
+        // 终止子进程并销毁 capability；不能留下一个未配置但仍存活的 Pi 进程。
+        this.stop();
+        await this.closeManagedLease();
+        throw error;
+      }
+    }
 
     return this.rpc;
   }
@@ -549,14 +602,29 @@ export class PiProcess extends EventEmitter {
     return this.proc !== undefined && this.rpc !== undefined;
   }
 
+  beginManagedTurn(turnId: string): void {
+    this.managedLease?.beginTurn(turnId);
+  }
+
+  finishManagedTurn(turnId: string): string[] {
+    return this.managedLease?.finishTurn(turnId) ?? [];
+  }
+
   stop() {
     if (!this.proc) {
       // 进程已不在仍可能残留停放态（例如 start 中途失败路径）。
       this.restoreParkedExtensions();
+      void this.closeManagedLease();
       return;
     }
     this.proc.kill();
     // 真正还原在 exit 回调里做；此处不提前 unpark，避免与仍在退出的 pi 竞态。
+  }
+
+  private async closeManagedLease(): Promise<void> {
+    const lease = this.managedLease;
+    this.managedLease = undefined;
+    await lease?.close();
   }
 
   /** 后台执行 pi --version：更新诊断缓存，但不阻塞 start()/spawn。 */

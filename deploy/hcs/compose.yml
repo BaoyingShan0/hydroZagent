@@ -1,0 +1,95 @@
+name: hydro-hcs
+
+services:
+  postgres:
+    image: ${HCS_POSTGRES_IMAGE:?set a reviewed digest-pinned PostgreSQL image}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${HCS_POSTGRES_DB:?}
+      POSTGRES_USER: ${HCS_POSTGRES_USER:?}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - hcs_postgres_data:/var/lib/postgresql/data
+    networks: [database]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+
+  migration:
+    image: ${HCS_IMAGE:?set the reviewed HCS image digest}
+    env_file: ${HCS_CONFIG_DIR:?}/hcs.env
+    command: ["node", "dist/db/cli.js", "up"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [database]
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=16m"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    restart: "no"
+
+  hcs:
+    image: ${HCS_IMAGE:?set the reviewed HCS image digest}
+    restart: unless-stopped
+    env_file: ${HCS_CONFIG_DIR:?}/hcs.env
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+    ports:
+      - "${HCS_BIND_ADDRESS:?}:${HCS_HTTPS_PORT:?}:8787"
+    volumes:
+      - ${HCS_CONFIG_DIR:?}/tls:/run/hcs/tls:ro
+      - ${HCS_CONFIG_DIR:?}/backup-key-manifest.json:/run/hcs/backup-key-manifest.json:ro
+    networks: [database, model_egress]
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=32m"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          const fs=require('node:fs');const https=require('node:https');
+          const r=https.get({host:'127.0.0.1',port:8787,path:'/readyz',ca:fs.readFileSync(process.env.HCS_TLS_CA_PATH)},x=>process.exit(x.statusCode===200?0:1));
+          r.on('error',()=>process.exit(1));r.setTimeout(4000,()=>{r.destroy();process.exit(1)});
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  restore-postgres:
+    profiles: ["restore"]
+    image: ${HCS_POSTGRES_IMAGE:?set a reviewed digest-pinned PostgreSQL image}
+    environment:
+      POSTGRES_DB: ${HCS_RESTORE_POSTGRES_DB:?}
+      POSTGRES_USER: ${HCS_POSTGRES_USER:?}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - hcs_restore_data:/var/lib/postgresql/data
+    networks: [database]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+
+networks:
+  database:
+    internal: true
+  model_egress: {}
+
+volumes:
+  hcs_postgres_data: {}
+  hcs_restore_data: {}
+
+secrets:
+  postgres_password:
+    file: ${HCS_CONFIG_DIR:?}/postgres-password

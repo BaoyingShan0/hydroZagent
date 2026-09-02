@@ -95,6 +95,7 @@ export function loadTsCommonJs(filePath, options = {}) {
       clearImmediate,
       queueMicrotask,
       crypto: globalThis.crypto,
+      performance: globalThis.performance,
       ...options.globals,
     }, { filename: absolutePath });
     return module.exports;

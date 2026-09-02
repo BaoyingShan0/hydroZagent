@@ -220,6 +220,7 @@ export class SessionRuntimeCoordinator {
 		private readonly agents: SessionAgentGateway,
 		private readonly sendAgentPrompt: (input: SendPromptInput) => Promise<SendPromptResult>,
 		private readonly logger?: SessionRuntimeLogger,
+		private readonly allowedBackend?: AgentBackend,
 	) {}
 
 	/** 渲染层在 currentSessionId 变化时汇报聚焦会话（见 sessions:set-focused-session IPC）。 */
@@ -989,6 +990,9 @@ export class SessionRuntimeCoordinator {
 	async restartSession(sessionId: string, agentId: string): Promise<AgentTab> {
 		const entry = this.catalog.get(sessionId);
 		if (!entry) throw new Error(`Session not found: ${sessionId}`);
+		if (this.allowedBackend && (entry.backend ?? "pi") !== this.allowedBackend) {
+			throw new Error(`Session backend is disabled in this build: ${entry.backend ?? "pi"}`);
+		}
 		const mappedAgentId = this.getAgentId(sessionId);
 		if (mappedAgentId && mappedAgentId !== agentId) {
 			throw new Error("Session runtime changed before restart");

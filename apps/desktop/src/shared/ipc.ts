@@ -1,4 +1,12 @@
 export const ipcChannels = {
+	managedStatus: "managed:status",
+	managedLogin: "managed:login",
+	managedRegister: "managed:register",
+	managedNotice: "managed:notice",
+	managedConsent: "managed:consent",
+	managedWithdraw: "managed:withdraw",
+	managedLogout: "managed:logout",
+	managedDeactivate: "managed:deactivate",
 	projectsList: "projects:list",
 	projectsAdd: "projects:add",
 	projectsRemove: "projects:remove",

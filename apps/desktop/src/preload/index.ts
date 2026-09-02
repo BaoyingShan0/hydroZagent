@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, webUtils } from "electron";
 import { ipcChannels } from "../shared/ipc";
 import type { RpcLogBatch, RpcLogEntry } from "../shared/types/rpcLog";
 import type { ImageGenConfigFile, ImageGenRequest, ImageGenResult, ImageGenSaveResult } from "../shared/types/imagegen";
+import type { ManagedAccessStatus, ManagedConsentInput, ManagedLoginInput, ManagedNotice } from "../shared/types/managed";
 import type {
 	YaoPromptListResult,
 	YaoPromptDetailResult,
@@ -117,6 +118,18 @@ function clipboardSync<T>(channel: string, fallback: T): T {
 }
 
 const api = {
+	managed: {
+		status: async (): Promise<ManagedAccessStatus> => ipcRenderer.invoke(ipcChannels.managedStatus),
+		login: async (input: ManagedLoginInput): Promise<ManagedAccessStatus> =>
+			ipcRenderer.invoke(ipcChannels.managedLogin, input),
+		register: async (input: ManagedLoginInput): Promise<ManagedAccessStatus> =>
+			ipcRenderer.invoke(ipcChannels.managedRegister, input),
+		notice: async (): Promise<ManagedNotice> => ipcRenderer.invoke(ipcChannels.managedNotice),
+		consent: async (input: ManagedConsentInput): Promise<void> => ipcRenderer.invoke(ipcChannels.managedConsent, input),
+		withdraw: async (): Promise<void> => ipcRenderer.invoke(ipcChannels.managedWithdraw),
+		logout: async (): Promise<void> => ipcRenderer.invoke(ipcChannels.managedLogout),
+		deactivate: async (): Promise<void> => ipcRenderer.invoke(ipcChannels.managedDeactivate),
+	},
 	clipboard: {
 		// 同步读取必须走主进程 sendSync：Electron 38 已废弃渲染进程/preload 直连 clipboard。
 		readText: () => clipboardSync(ipcChannels.clipboardReadText, ""),

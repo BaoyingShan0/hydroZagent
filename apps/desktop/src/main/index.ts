@@ -7,6 +7,7 @@ import {
 	nativeImage,
 	nativeTheme,
 	net,
+	Notification,
 	protocol,
 	session,
 	shell,
@@ -36,6 +37,18 @@ import {
 } from "./devIsolation";
 import { resolvePackagedUserDataDir } from "./portableUserData";
 import { extractFocusTargetFromArgv } from "./utils/focusTarget";
+import { assertManagedBuildManifest, MANAGED_BUILD } from "./managed/buildManifest";
+import { ManagedCredentialStore } from "./managed/credentialStore";
+import { ManagedDeviceIdentityStore } from "./managed/deviceIdentityStore";
+import { windowsSystemEncryption } from "./managed/systemEncryption";
+import { ManagedHcsClient } from "./managed/hcsClient";
+import { ManagedAuthManager } from "./managed/authManager";
+import { registerManagedIpc } from "./ipc/managedIpc";
+import { enforceManagedIpcLock } from "./managed/ipcLock";
+import { ManagedCatalogService } from "./managed/catalogService";
+import { DefaultManagedRuntimeFactory } from "./managed/runtimeFactory";
+import type { ManagedRuntimeFactory } from "./managed/runtimeRegistry";
+import { ManagedUsageReporter, type ManagedUsageSink } from "./managed/usageReporter";
 import type { Project, StartupWindowMode } from "../shared/types";
 // 使用 ?asset 后缀让 electron-vite 复制资源并返回运行时路径。
 // Windows 任务栏优先使用 ICO；托盘与其他平台使用 PNG，避免开发态回退 Electron 原子图标。
@@ -97,7 +110,7 @@ applyLinuxDisplayBackendWorkaround(false);
 // Chromium 沙箱开关必须在 app.ready 前生效。
 // 默认关闭：Windows 上部分安全软件/旧 GPU 驱动会在沙箱初始化时触发原生断点（0x80000003）。
 // 用户可在「开发设置」中开启 electronChromiumSandbox，重启后走 Chromium 默认沙箱。
-const electronChromiumSandboxEnabled = readElectronChromiumSandboxPreference();
+const electronChromiumSandboxEnabled = MANAGED_BUILD.managed || readElectronChromiumSandboxPreference();
 if (!electronChromiumSandboxEnabled) {
 	// 关闭沙箱时显式附带 no-sandbox，避免部分环境仍按默认策略启用。
 	app.commandLine.appendSwitch("no-sandbox");
@@ -382,6 +395,9 @@ let memoryProfileHandle: MemoryProfileHandle | null = null;
 let diagnosticsMonitor: DiagnosticsMonitor | null = null;
 let feishuBridge: FeishuBridge | null = null;
 let usageStatsService: UsageStatsService | null = null;
+let managedCatalogService: ManagedCatalogService | undefined;
+let managedRuntimeFactoryInstance: ManagedRuntimeFactory | undefined;
+let managedUsageSink: ManagedUsageSink | undefined;
 /** 粘贴文件启动清理（registerIpc 阶段赋值；whenReady 后 fire-and-forget 执行） */
 let cleanupPasteFiles: (() => Promise<number>) | undefined;
 
@@ -2034,6 +2050,10 @@ function currentFeishuLocale(): FeishuLocale {
 }
 
 function registerFeishuIpc() {
+	if (MANAGED_BUILD.managed) {
+		enforceManagedIpcLock(ipcMain);
+		return;
+	}
 	/** Bot 配置变更后主动推送给 renderer，保证多个页面/弹窗中的 Bot 列表实时同步。 */
 	function broadcastBotsChanged() {
 		if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -2824,6 +2844,13 @@ function registerIpc() {
 		piLocator,
 		settingsStore,
 		configManager,
+		managedMode: MANAGED_BUILD.managed,
+		listManagedModels: managedCatalogService
+			? async (force) => {
+				await managedCatalogService?.getCurrent(force);
+				return managedCatalogService?.availableModels() ?? [];
+			}
+			: undefined,
 		agentManager,
 		skillManager,
 		appLogger,
@@ -3016,6 +3043,44 @@ app.whenReady().then(async () => {
 	claudeSessionImporter = new ClaudeSessionImporter(mainCopy);
 	openCodeSessionImporter = new OpenCodeSessionImporter(mainCopy);
 	settingsStore = new SettingsStore();
+	assertManagedBuildManifest();
+	let managedAuthManager: ManagedAuthManager | undefined;
+	if (MANAGED_BUILD.managed) {
+		const managedHcsClient = new ManagedHcsClient();
+		const managedDeviceId = await new ManagedDeviceIdentityStore(
+			join(app.getPath("userData"), "managed", "device-identity.json"),
+		).loadOrCreate();
+		managedAuthManager = new ManagedAuthManager(
+			managedHcsClient,
+			new ManagedCredentialStore(join(app.getPath("userData"), "managed", "credentials.enc"), windowsSystemEncryption),
+			{
+				deviceId: managedDeviceId,
+				clientVersion: app.getVersion(),
+				onAccessLost: () => agentManager?.stopAll(),
+			},
+		);
+		await managedAuthManager.initialize();
+		managedCatalogService = new ManagedCatalogService(managedHcsClient, managedAuthManager);
+		managedRuntimeFactoryInstance = new DefaultManagedRuntimeFactory(
+			managedAuthManager,
+			managedCatalogService,
+		);
+		managedUsageSink = new ManagedUsageReporter({
+			client: managedHcsClient,
+			auth: managedAuthManager,
+			clientVersion: app.getVersion(),
+			deviceId: managedDeviceId,
+			onFailure: () => {
+				if (Notification.isSupported()) {
+					new Notification({
+						title: mainCopy("managed.usageReportFailedTitle"),
+						body: mainCopy("managed.usageReportFailedBody"),
+					}).show();
+				}
+			},
+		});
+	}
+	registerManagedIpc(ipcMain, managedAuthManager);
 	// 安全管理：配置 owner + 策略快照写入（供 pi-deck-security-gate 扩展消费）
 	securityStore = new SecurityStore({
 		settingsStore,
@@ -3081,7 +3146,7 @@ app.whenReady().then(async () => {
 		mainCopy,
 		// 每次 spawn Agent 前异步刷新模型列表缓存（防用户直接改 models.json/auth.json 不生效）。
 		() => {
-			if (piLocator && settingsStore) {
+			if (!MANAGED_BUILD.managed && piLocator && settingsStore) {
 				void refreshModelList(piLocator, settingsStore, configManager).catch(() => undefined);
 			}
 		},
@@ -3108,6 +3173,8 @@ app.whenReady().then(async () => {
 			const { piProxyProviders, piProxyModels } = settingsStore.get();
 			return resolveEffectiveSessionProxyMode(sessionMode, provider, modelId, piProxyProviders, piProxyModels);
 		},
+		managedRuntimeFactoryInstance,
+		managedUsageSink,
 	);
 	// C12：退出清理登记（before-quit 统一 runAll，新增资源不再改 before-quit）
 	quitCleanup.register("pi-agents", () => agentManager?.stopAll());
@@ -3445,6 +3512,7 @@ app.whenReady().then(async () => {
 		compositeAgentGateway,
 		sendAgentPromptWithIntegrations,
 		appLogger,
+		MANAGED_BUILD.managed ? "pi" : undefined,
 	);
 	// pi 运行时标题（首轮自动改名 / session_info_changed / rename）写回 catalog：
 	// 侧栏 SessionTree 与 Tab 栏读的是 SessionRecord.title，不是 AgentTab.title。
@@ -3550,7 +3618,7 @@ app.whenReady().then(async () => {
 	void applyDesktopProxy(settingsStore.get()).catch((error) => {
 		void appLogger.warn("settings", "Desktop proxy skipped after apply failure", error);
 	});
-	void webServiceManager.applySettings(settingsStore.get()).catch((error) => {
+	if (!MANAGED_BUILD.managed) void webServiceManager.applySettings(settingsStore.get()).catch((error) => {
 		console.error("Failed to start web service:", error);
 		void appLogger.warn("web", "Web service disabled after apply failure", {
 			error: error instanceof Error ? error.message : String(error),
@@ -3559,9 +3627,9 @@ app.whenReady().then(async () => {
 	});
 
 	// 🆕 自动连接：如果已有 Bot 配置，自动启动飞书连接
-	autoConnectFeishu();
+	if (!MANAGED_BUILD.managed) autoConnectFeishu();
 
-	sendTelemetryHeartbeat();
+	if (!MANAGED_BUILD.managed) sendTelemetryHeartbeat();
 
 	// 内存分析模式（PIDECK_MEMORY_PROFILE=1）：尽早开始采样，覆盖窗口创建/加载全过程。
 	// 采样失败不阻塞启动（诊断工具降级为不可用）。

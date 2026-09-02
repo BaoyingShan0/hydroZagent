@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+case "${1:-}" in
+  seed|create-user|set-role|delete-usage|issue-reset) ;;
+  *) echo "Unsupported administrator subcommand" >&2; exit 64 ;;
+esac
+
+readonly deploy_root="/opt/hydro-hcs/deploy"
+readonly deploy_env="/etc/hydro-hcs/deploy.env"
+if [[ "${1}" == "seed" ]]; then
+  exec /usr/bin/docker compose --env-file "$deploy_env" -f "$deploy_root/compose.yml" run --rm --no-deps --user 0:0 -e HCS_ALLOW_SEED=true hcs node dist/admin-cli/cli.js admin "$@"
+fi
+exec /usr/bin/docker compose --env-file "$deploy_env" -f "$deploy_root/compose.yml" run --rm --no-deps --user 0:0 -e SUDO_UID hcs node dist/admin-cli/cli.js admin "$@"

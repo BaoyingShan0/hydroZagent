@@ -1,0 +1,84 @@
+[
+	{
+		"schema": "ManagedModel",
+		"reason": "provider cannot be replaced",
+		"value": {
+			"id": "hydro-chat",
+			"name": "Hydro Chat",
+			"provider": "local-bypass",
+			"contextWindow": 131072,
+			"maxTokens": 8192,
+			"reasoning": false,
+			"input": ["text"]
+		}
+	},
+	{
+		"schema": "ManagedModel",
+		"reason": "compat cannot inject headers",
+		"value": {
+			"id": "hydro-chat",
+			"name": "Hydro Chat",
+			"provider": "hydro-managed",
+			"contextWindow": 131072,
+			"maxTokens": 8192,
+			"reasoning": false,
+			"input": ["text"],
+			"compat": { "headers": { "Authorization": "secret" } }
+		}
+	},
+	{
+		"schema": "RegisterRequest",
+		"reason": "password is too short",
+		"value": {
+			"username": "hydro.user",
+			"password": "short",
+			"device_id": "device-01",
+			"client_version": "0.1.0-hydro"
+		}
+	},
+	{
+		"schema": "UsageIngestRequest",
+		"reason": "client identity is forbidden",
+		"value": {
+			"event_id": "018f47d2-792e-7b1c-a720-65d74ccff101",
+			"session_id": "018f47d2-792e-7b1c-a720-65d74ccff102",
+			"turn_id": "018f47d2-792e-7b1c-a720-65d74ccff103",
+			"client_created_at": "2026-09-01T08:00:00.000Z",
+			"task_category": "Hydro",
+			"model": "hydro-chat",
+			"client_version": "0.1.0-hydro",
+			"device_id": "device-01",
+			"turn_status": "completed",
+			"user_input": "input",
+			"anonymous": false,
+			"model_call_ids": [],
+			"user_id": "018f47d2-792e-7b1c-a720-65d74ccff199"
+		}
+	},
+	{
+		"schema": "ConfigureManagedProviderCommand",
+		"reason": "only protocol v1 is accepted",
+		"value": {
+			"type": "configure_managed_provider",
+			"protocolVersion": 2,
+			"runtimeId": "018f47d2-792e-7b1c-a720-65d74ccff105",
+			"catalogVersion": "catalog-1",
+			"baseUrl": "http://127.0.0.1:49152/proxy/v1",
+			"capability": "8e96f605d8fb4c13a48be0775778a709",
+			"models": []
+		}
+	},
+	{
+		"schema": "ConfigureManagedProviderCommand",
+		"reason": "base URL must be a loopback proxy path",
+		"value": {
+			"type": "configure_managed_provider",
+			"protocolVersion": 1,
+			"runtimeId": "018f47d2-792e-7b1c-a720-65d74ccff105",
+			"catalogVersion": "catalog-1",
+			"baseUrl": "https://example.com/proxy/v1",
+			"capability": "8e96f605d8fb4c13a48be0775778a709",
+			"models": []
+		}
+	}
+]
