@@ -224,6 +224,29 @@ describeWithDatabase("managed P0 route flow with PostgreSQL and fake upstream", 
 		expect(ingested.json()).toEqual({ accepted: true, deduplicated: false });
 		const duplicate = await app.inject({ method: "POST", url: "/ingest/usage", headers: authorization, payload: usagePayload });
 		expect(duplicate.json()).toEqual({ accepted: true, deduplicated: true });
+		const conflict = await app.inject({
+			method: "POST", url: "/ingest/usage", headers: authorization,
+			payload: { ...usagePayload, user_input: "replacement must not overwrite", assistant_final: "changed" },
+		});
+		expect(conflict.statusCode).toBe(200);
+		expect(conflict.json()).toEqual({ accepted: true, deduplicated: true });
+		expect((await pool.query(
+			"SELECT 1 FROM admin_audit WHERE action = 'usage_duplicate_conflict' AND target_id = $1", [eventId],
+		)).rowCount).toBe(1);
+
+		// A mixed owned/foreign call list must roll back both the record and all links.
+		const otherUserId = randomUUID();
+		const foreignCallId = randomUUID();
+		await pool.query("INSERT INTO users(id, username, password_hash) VALUES ($1, $2, 'test-only')", [otherUserId, `other-${otherUserId}`]);
+		await pool.query("INSERT INTO model_proxy_calls(id, user_id, model) VALUES ($1, $2, 'managed-coder')", [foreignCallId, otherUserId]);
+		const rejectedEventId = randomUUID();
+		const rejected = await app.inject({
+			method: "POST", url: "/ingest/usage", headers: authorization,
+			payload: { ...usagePayload, event_id: rejectedEventId, model_call_ids: [modelCallId, foreignCallId] },
+		});
+		expect(rejected.statusCode).toBe(400);
+		expect((await pool.query("SELECT 1 FROM usage_records WHERE event_id = $1", [rejectedEventId])).rowCount).toBe(0);
+		expect((await pool.query("SELECT 1 FROM turn_model_call_links WHERE usage_event_id = $1", [rejectedEventId])).rowCount).toBe(0);
 
 		const stored = await pool.query<{
 			user_id: string;
@@ -245,6 +268,15 @@ describeWithDatabase("managed P0 route flow with PostgreSQL and fake upstream", 
 		expect(row?.user_input.toString("utf8")).not.toContain("sensitive prompt");
 		expect(usage.decrypt(row?.user_input ?? new Uint8Array(), eventId, tokens.user.id, "user_input")).toBe("sensitive prompt");
 		expect(usage.decrypt(row?.assistant_final ?? new Uint8Array(), eventId, tokens.user.id, "assistant_final")).toBe("managed answer");
+
+		// Old but still valid consent is admission state, not expired history.
+		await pool.query("UPDATE consents SET consented_at = $1 WHERE user_id = $2", [new Date(0), tokens.user.id]);
+		await new PgLifecycleRepository(pool).cleanup({
+			usageRetentionSeconds: 3600, consentRetentionSeconds: 1, modelCallRetentionSeconds: 3600,
+			authSessionRetentionSeconds: 3600, passwordResetRetentionSeconds: 3600,
+			auditRetentionSeconds: 3600, proxyMaximumTimeoutSeconds: 60,
+		}, new Date());
+		expect((await app.inject({ method: "GET", url: "/proxy/v1/models", headers: authorization })).statusCode).toBe(200);
 
 		const withdrawn = await app.inject({ method: "POST", url: "/auth/withdraw-consent", headers: authorization });
 		expect(withdrawn.statusCode).toBe(200);

@@ -24,16 +24,17 @@ test("start surface reuses the session bottom composer, not a second input imple
   assert.match(surface, /<SessionGoalStrip sessionId=\{props\.sessionId\} \/>/);
   assert.match(surface, /useSessionPaneServices\(\)/);
   assert.match(surface, /queuedPromptsBySession\[props\.sessionId\]/);
-  assert.match(surface, /<LogoMark size=\{72\} \/>/);
+  assert.match(surface, /import \{ HydroWelcomeBackdrop, HydroWelcomeHeader \}/);
+  assert.match(surface, /<HydroWelcomeBackdrop \/>/);
+  assert.match(surface, /<HydroWelcomeHeader \/>/);
   assert.doesNotMatch(surface, /TipTapComposer/);
   assert.doesNotMatch(surface, /waitRuntimeReady|sendPrompt|getComposerEnterIntent/);
 });
 
 test("start surface centers the composer", () => {
-  // DeepSeek 式居中：flex 列 + 重心下移（pt-[18vh] 压向视口中心）；
-  // 2026-11 整体放大：Logo 72 / 980px / 高 300；快捷项按钮已按用户要求移除
-  assert.match(surface, /pt-\[18vh\]/);
-  assert.match(surface, /max-w-\[980px\]/);
+  // 当前欢迎页布局：验证 JSX 的实际类名，避免匹配过期注释。
+  assert.match(surface, /className="[^"\n]*pt-\[9vh\]/);
+  assert.match(surface, /className="[^"\n]*max-w-\[920px\]/);
   assert.match(surface, /defaultHeight=\{150\}/);
   assert.match(surface, /session-start-surface/);
   // 移除快捷项后不再存在相关常量/交互代码

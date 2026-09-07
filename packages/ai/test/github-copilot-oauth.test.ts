@@ -4,6 +4,27 @@ import { githubCopilotOAuth } from "../src/auth/oauth/github-copilot.ts";
 import { createModels } from "../src/models.ts";
 import { githubCopilotProvider } from "../src/providers/github-copilot.ts";
 
+// OAuth policy behavior must not depend on public catalog retirements.
+vi.mock("../src/providers/github-copilot.models.ts", () => ({
+	GITHUB_COPILOT_MODELS: Object.fromEntries(
+		["gpt-4.1", "claude-opus-4.7", "gpt-5.4-nano", "gpt-4o", "fake-policy-1", "fake-policy-2"].map((id) => [
+			id,
+			{
+				id,
+				name: id,
+				provider: "github-copilot",
+				api: "openai-completions",
+				baseUrl: "https://api.individual.githubcopilot.com",
+				reasoning: false,
+				input: ["text"],
+				contextWindow: 128000,
+				maxTokens: 8192,
+				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+			},
+		]),
+	),
+}));
+
 const neverAbortedSignal = new AbortController().signal;
 
 function jsonResponse(body: unknown, status: number = 200): Response {

@@ -44,8 +44,8 @@ test("Windows runtime and tray use hydroZagent assets instead of Electron defaul
   assert.match(mainSource, /tray\.setToolTip\("浙水智能体"\)/);
 });
 
-test("welcome tagline and capability chips stay hidden above the composer", () => {
-  assert.match(welcomeHeader, /<p hidden className=/);
+test("welcome tagline remains visible while capability chips stay hidden above the composer", () => {
+  assert.match(welcomeHeader, /<p className=[^>]+>\s*\{t\("hydro\.welcome\.tagline"\)\}/);
   assert.match(welcomeHeader, /<div\s+hidden\s+className="mt-4 flex flex-wrap/);
 });
 

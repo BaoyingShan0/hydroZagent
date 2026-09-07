@@ -9,6 +9,8 @@ export default mergeConfig(
 			globals: true,
 			environment: "node",
 			testTimeout: 30000,
+			// Bound simultaneous Windows CLI subprocesses; retain each test's original timeout.
+			...(process.platform === "win32" ? { maxWorkers: 4 } : {}),
 			// Tests run offline by default; opt in with allowNetwork() from test/test-network-env.ts.
 			env: { PI_OFFLINE: "1" },
 			unstubEnvs: true,

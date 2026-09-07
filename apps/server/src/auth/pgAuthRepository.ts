@@ -92,7 +92,7 @@ export class PgAuthRepository implements AuthRepository {
 			`UPDATE users
 			 SET failed_login_count = failed_login_count + 1,
 			     locked_until = CASE
-			       WHEN failed_login_count + 1 >= $3 THEN $2 + ($4 * interval '1 second')
+			       WHEN failed_login_count + 1 >= $3 THEN $2::timestamptz + ($4::integer * interval '1 second')
 			       ELSE locked_until
 			     END
 			 WHERE id = $1

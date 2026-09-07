@@ -58,7 +58,9 @@ jobs:
       - name: Check HCS deployment assets
         run: |
           node scripts/check-hcs-deploy.mjs
-          bash -n deploy/hcs/bin/hydro-hcs-admin deploy/hcs/scripts/*.sh
+          for script in deploy/hcs/bin/hydro-hcs-admin deploy/hcs/scripts/*.sh; do
+            bash -n "$script"
+          done
 
   build-check-test:
     runs-on: ubuntu-latest
@@ -88,14 +90,26 @@ jobs:
         run: npm run check
 
       - name: Test
-        run: npm test
+        run: |
+          mkdir -p .artifacts/hcs-acceptance
+          set -o pipefail
+          ./test.sh 2>&1 | tee .artifacts/hcs-acceptance/linux-isolated-test.log
+
+      - name: Upload Linux test evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: hydrozagent-linux-tests
+          path: .artifacts/hcs-acceptance/linux-isolated-test.log
+          if-no-files-found: warn
 
   managed-windows-artifact:
     runs-on: windows-latest
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
-      HYDRO_HCS_BASE_URL: https://hcs.test.internal
-      HYDRO_HCS_CA_BUNDLE_PATH: ${{ github.workspace }}\contracts\hcs\v1\fixtures\test-ca.pem
+      HYDRO_HCS_BASE_URL: https://hcs.test.internal:28787
+      HYDRO_HCS_CA_BUNDLE_PATH: ${{ github.workspace }}\.artifacts\hcs-test-pki\ca.pem
+      HCS_TEST_PKI_DIR: ${{ github.workspace }}\.artifacts\hcs-test-pki
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -118,28 +132,81 @@ jobs:
         shell: pwsh
         run: |
           npm ci --ignore-scripts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm ci --prefix apps/desktop --ignore-scripts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm ci --prefix apps/server --ignore-scripts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node apps/desktop/node_modules/electron/install.js
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare isolated test services and trust
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force .artifacts/hcs-acceptance | Out-Null
+          $env:OPENSSL_EXE = 'C:\Program Files\Git\usr\bin\openssl.exe'
+          node apps/desktop/scripts/create-managed-test-pki.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./scripts/start-hcs-test-postgres.ps1
 
       - name: Verify contracts and managed runtime tests
         shell: pwsh
         run: |
           node scripts/check-hcs-contracts.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm --prefix apps/desktop run typecheck
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix apps/server run check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix apps/server run test:integration *> .artifacts/hcs-acceptance/postgres.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Push-Location apps/desktop
           node --test tests/managedAuthManager.test.mjs tests/managedCatalogService.test.mjs tests/managedCredentialStore.test.mjs tests/managedDeviceIdentityStore.test.mjs tests/managedHcsClient.test.mjs tests/managedIpcBoundary.test.mjs tests/managedIpcLock.test.mjs tests/managedLoopbackProxy.test.mjs tests/managedSettingsPolicy.test.mjs tests/managedUsageProjection.test.mjs tests/managedUsageReporter.test.mjs tests/piProcessErrorSafety.test.mjs tests/piProcessSecurityEnv.test.mjs tests/piRpcClientTimeout.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Pop-Location
           npm test --prefix packages/coding-agent -- test/managed-provider.test.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix apps/desktop test *> .artifacts/hcs-acceptance/desktop.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --test apps/desktop/tests/windows/buildManifest.test.cjs apps/desktop/tests/windows/safeStorage.test.cjs *> .artifacts/hcs-acceptance/windows-native.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build managed Windows installer
-        run: npm run desktop:dist:managed
+        shell: pwsh
+        run: |
+          npm run desktop:dist:managed *> .artifacts/hcs-acceptance/build.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Scan managed artifact
         run: npm --prefix apps/desktop run check:managed-artifact
 
+      - name: Exercise packaged Windows chain
+        shell: pwsh
+        run: |
+          $env:HCS_TEST_DESKTOP_EXE = (Resolve-Path 'apps/desktop/release/managed/win-unpacked/浙水智能体受管版.exe').Path
+          Push-Location apps/server
+          node node_modules/vitest/vitest.mjs run --config vitest.windows.config.ts *> ../../.artifacts/hcs-acceptance/windows-chain.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
+
+      - name: Stop isolated PostgreSQL
+        if: always()
+        shell: pwsh
+        run: |
+          if ($env:HCS_TEST_PG_BIN) {
+            & "$env:HCS_TEST_PG_BIN/pg_ctl.exe" -D .artifacts/hcs-postgres-test/data -m fast -w stop
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
       - name: Upload managed artifact evidence
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: hydrozagent-managed-windows
-          path: apps/desktop/release/*managed*
+          path: |
+            apps/desktop/release/managed/*managed*.exe
+            apps/desktop/release/managed/*managed*.zip
+            apps/desktop/release/managed/managed-artifact-report.json
+            apps/desktop/release/managed/SHA256SUMS.txt
+            .artifacts/hcs-acceptance/*.log
           if-no-files-found: error

@@ -36,15 +36,15 @@ test("tool and thinking disclosure icons use right-for-collapsed down-for-expand
   assert.match(toolCalls, /\{expanded \? \([\s\S]*<ChevronDown[\s\S]*\) : \([\s\S]*<ChevronRight/);
 });
 
-test("tool rows use the Hydro brand's quiet white cards and semantic borders", () => {
+test("tool rows use the Hydro brand's quiet white background without card borders", () => {
   assert.match(
     toolCalls,
-    /className=\{`tool-card[\s\S]*?border border-border-subtle bg-bg-panel/,
+    /className=\{`tool-card[\s\S]*?border-0 bg-bg-panel px-1\.5 py-0\.5/,
   );
   const css = readFileSync("src/renderer/src/styles/timeline.css", "utf8");
   const cardRule = css.match(/\.tool-card \{[\s\S]*?\n\}/)?.[0] ?? "";
   assert.ok(cardRule, ".tool-card rule must exist");
-  assert.match(cardRule, /border:\s*1px solid var\(--color-border-subtle\)/);
+  assert.match(cardRule, /border:\s*none/);
   assert.match(cardRule, /background:\s*var\(--color-bg-panel\)/);
   // skill 身份改走图标色，不再给整行铺紫色底（那是卡片语言）
   const skillRule = css.match(/\.tool-card--skill \{[\s\S]*?\n\}/)?.[0] ?? "";

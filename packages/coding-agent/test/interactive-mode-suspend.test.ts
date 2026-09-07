@@ -17,8 +17,14 @@ type InteractiveModePrototypeWithHandleCtrlZ = {
 	handleCtrlZ(this: HandleCtrlZThis): void;
 };
 
-function callHandleCtrlZ(context: HandleCtrlZThis): void {
-	(interactiveModePrototype as InteractiveModePrototypeWithHandleCtrlZ).handleCtrlZ.call(context);
+function callHandleCtrlZ(context: HandleCtrlZThis, platform: NodeJS.Platform = "linux"): void {
+	const descriptor = Object.getOwnPropertyDescriptor(process, "platform");
+	Object.defineProperty(process, "platform", { configurable: true, value: platform });
+	try {
+		(interactiveModePrototype as InteractiveModePrototypeWithHandleCtrlZ).handleCtrlZ.call(context);
+	} finally {
+		if (descriptor) Object.defineProperty(process, "platform", descriptor);
+	}
 }
 
 const interactiveModePrototype = InteractiveMode.prototype as unknown;
@@ -47,7 +53,7 @@ describe("InteractiveMode.handleCtrlZ", () => {
 		const processKillSpy = vi.spyOn(process, "kill");
 
 		try {
-			callHandleCtrlZ(context);
+			callHandleCtrlZ(context, "win32");
 		} finally {
 			if (platformDescriptor) {
 				Object.defineProperty(process, "platform", platformDescriptor);

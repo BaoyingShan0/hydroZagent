@@ -230,17 +230,20 @@ test("validates a local parent session by reading only the bounded file head", (
 	}
 });
 
-test("aborts a hung WSL scan before the renderer watchdog and allows a clean retry", async () => {
+test("aborts a hung WSL scan before the renderer watchdog and allows a clean retry", { timeout: 5000 }, async () => {
 	const home = mkdtempSync(join(tmpdir(), "pideck-session-scan-timeout-"));
 	try {
 		const { SessionScanner } = loadSessionScanner(home);
 		const scanner = new SessionScanner();
 		scanner.wslConfig = { distro: "Ubuntu", user: "dev", home: "/home/dev" };
 		scanner.scanTimeoutMs = 10;
+		// Disk initialization must not consume the deliberately short scan deadline.
+		await scanner.summaryCache.ensureLoaded();
 		let attempts = 0;
 		scanner.collectWslJsonl = async (_sessionsDir, signal) => {
 			attempts += 1;
 			if (attempts > 1) return [];
+			signal.throwIfAborted();
 			return new Promise((_resolve, reject) => {
 				signal.addEventListener("abort", () => reject(signal.reason), { once: true });
 			});

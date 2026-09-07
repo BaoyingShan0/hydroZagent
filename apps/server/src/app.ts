@@ -30,7 +30,8 @@ function hasErrorCode(error: unknown, code: string): boolean {
 /** Builds the HCS HTTP application without opening a socket so routes remain injectable in tests. */
 export function buildApp(config: AppRuntimeConfig, services: AppServices = {}): FastifyInstance {
 	const app = Fastify({
-		ajv: { customOptions: { removeAdditional: false } },
+		// Preserve the wire contract: coercion makes nullable oneOf fields ambiguous.
+		ajv: { customOptions: { removeAdditional: false, coerceTypes: false } },
 		bodyLimit: 1024 * 1024,
 		logger: config.environment !== "test",
 		requestIdHeader: false,

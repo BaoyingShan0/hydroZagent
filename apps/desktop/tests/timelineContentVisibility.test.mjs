@@ -35,12 +35,8 @@ test("single-turn DOM stays light via default-collapsed process group", () => {
     "src/renderer/src/components/session/turn/useTurnExecution.ts",
     "utf8",
   );
-  // 历史已完成且有最终回答的轮始终折叠；进行中/中断轮默认折叠（仅设置①开启时展开）
-  assert.match(turnExecution, /历史已完成且有最终回答的轮：始终折叠/);
-  assert.match(
-    turnExecution,
-    /if \(opts\.isComplete && !opts\.agentRunning && opts\.hasFinalAnswer\) return false;/,
-  );
+  // 所有轮次初始折叠，流式上升沿再按设置展开。
+  assert.match(turnExecution, /const \[stepsVisible, setStepsVisible\] = useState\(false\);/);
   // 手动 override 最高优先：上升沿不清 override、不撑开手动折叠过的轮次
   assert.match(turnExecution, /!userOverrideRef\.current/);
   // 1.5s idle 自动收起由 timeline 统一计时，TurnRow 消费 autoCollapseTick；

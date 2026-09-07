@@ -32,8 +32,9 @@ test("startDshHostInBackground starts immediately without awaiting host readines
 	await startup;
 });
 
-test("startup integration warms DSH after the main window and Overview exposes host restart", () => {
-	assert.match(main, /await createWindow\(\);[\s\S]{0,400}startDshHostInBackground\(dshHost, appLogger\)/);
+test("lightweight startup does not warm DSH and the retained DSH view exposes host restart", () => {
+	assert.doesNotMatch(main, /startDshHostInBackground\(/);
+	assert.match(main, /new CompositeAgentGateway\(\[agentManager\]\)/);
 	assert.match(configTab, /const restartHost = async \(\) =>/);
 	assert.match(configTab, /desktopApi\.sessions\.restartDshHost\(\)/);
 	assert.match(configTab, /t\("config\.dsh\.restartHost"\)/);

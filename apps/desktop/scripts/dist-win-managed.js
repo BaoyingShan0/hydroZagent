@@ -8,13 +8,14 @@ for (const name of ["HYDRO_HCS_BASE_URL", "HYDRO_HCS_CA_BUNDLE_PATH"]) {
 const environment = { ...process.env, HYDRO_MANAGED_BUILD: "1" };
 
 console.log("[1/2] 构建 Windows 受管代码与固定信任材料…");
-execFileSync("npm.cmd", ["run", "build"], { cwd: root, stdio: "inherit", env: environment });
+if (!process.env.npm_execpath) throw new Error("Run managed distribution through npm run dist:managed");
+execFileSync(process.execPath, [process.env.npm_execpath, "run", "build"], { cwd: root, stdio: "inherit", env: environment });
 
 console.log("[2/2] 生成独立受管安装包…");
 execFileSync(
-	"npx.cmd",
+	process.execPath,
 	[
-		"electron-builder",
+		require.resolve("electron-builder/out/cli/cli.js"),
 		"--config=electron-builder.managed.cjs",
 		"--win",
 		"nsis",
@@ -23,6 +24,7 @@ execFileSync(
 		"--config.appId=com.hydrozagent.managed",
 		"--config.win.artifactName=hydroZagent-managed-${version}-win.${ext}",
 		"--config.nsis.artifactName=hydroZagent-managed-${version}-setup.${ext}",
+		...(process.env.CSC_IDENTITY_AUTO_DISCOVERY === "false" ? ["--config.win.signAndEditExecutable=false"] : []),
 	],
 	{ cwd: root, stdio: "inherit", env: environment },
 );

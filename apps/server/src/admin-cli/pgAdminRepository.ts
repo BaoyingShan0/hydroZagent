@@ -99,12 +99,12 @@ export class PgAdminRepository implements AdminRepository {
 		try {
 			await client.query("BEGIN");
 			const changed = await client.query<{ id: string; old_role: string }>(
-				`WITH current_user AS (
+				`WITH target_account AS (
 				   SELECT id, role AS old_role FROM users WHERE lower(username) = $1 FOR UPDATE
 				 )
 				 UPDATE users SET role = $2
-				 FROM current_user WHERE users.id = current_user.id
-				 RETURNING users.id, current_user.old_role`,
+				 FROM target_account WHERE users.id = target_account.id
+				 RETURNING users.id, target_account.old_role`,
 				[options.username, options.role],
 			);
 			const user = changed.rows[0];

@@ -20,7 +20,7 @@ test("sanitizeDevBranchSegment 把路径分隔符和非法字符收成目录安�
 	assert.equal(sanitizeDevBranchSegment("///"), "detached");
 });
 
-test("main/dev/master 继续用历史 pi-desktop-dev 和 5181", () => {
+test("main/dev/master 共用 hydrozagent-dev 和 5181", () => {
 	for (const branch of ["main", "master", "dev", "develop", "Dev", undefined, ""]) {
 		assert.equal(isSharedDevBranch(branch), true, String(branch));
 		assert.equal(resolveDevUserDataDirName(branch), DEFAULT_DEV_USER_DATA_NAME);
@@ -31,7 +31,7 @@ test("main/dev/master 继续用历史 pi-desktop-dev 和 5181", () => {
 test("功能分支拆开 userData 目录且不用 5181", () => {
 	assert.equal(
 		resolveDevUserDataDirName("feat/dsh-agent-mvp"),
-		"pi-desktop-dev-feat-dsh-agent-mvp",
+		"hydrozagent-dev-feat-dsh-agent-mvp",
 	);
 	const port = resolveDevVitePort("feat/dsh-agent-mvp");
 	assert.notEqual(port, DEFAULT_DEV_VITE_PORT);
@@ -58,7 +58,7 @@ test("主进程未打包时按分支解析 userData，打包 dev 构建仍固定
 
 test("readDevGitBranch 优先读环境变量，否则走 git", () => {
 	assert.equal(
-		readDevGitBranch({ env: { PIDECK_DEV_BRANCH: "feat/from-env" }, execGit: () => "should-not-run" }),
+		readDevGitBranch({ env: { HYDROZAGENT_DEV_BRANCH: "feat/from-env" }, execGit: () => "should-not-run" }),
 		"feat/from-env",
 	);
 	assert.equal(

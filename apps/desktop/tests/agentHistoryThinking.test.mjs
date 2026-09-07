@@ -7,6 +7,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 import ts from "typescript";
 import vm from "node:vm";
+import { loadTsCommonJs } from "./helpers/loadTsCommonJs.mjs";
 
 const nodeRequire = createRequire(import.meta.url);
 
@@ -148,6 +149,7 @@ function loadAgentManagerModule() {
       }
       if (specifier === "../../shared/ipc") return { ipcChannels: {} };
       if (specifier === "./PiProcess") return { PiProcess: class {} };
+      if (specifier === "../managed/usageProjection") return loadTsCommonJs("src/main/managed/usageProjection.ts");
       if (specifier === "./bashResult") return { formatBashToolMessage: () => "" };
       if (specifier === "./AgentMessageProjector") return messageProjectorModule;
       if (specifier === "./historyMessages") return { mergeHistoryWithPreservedMessages: (messages) => messages };

@@ -299,7 +299,9 @@ describe("S1 provider request admission", () => {
 				[createUserMessage()],
 				{ systemPrompt: "", messages: [], tools: [] },
 				createConfig({ beforeRequest: ({ effect }) => ({ kind: "admitted", effect }) }),
-				(event) => events.push(event),
+				(event) => {
+					events.push(event);
+				},
 				undefined,
 				() => new ThrowingIteratorStream(createAssistantMessage()),
 			),

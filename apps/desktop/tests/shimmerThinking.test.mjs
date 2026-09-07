@@ -157,7 +157,7 @@ test("interim answers share chat body size; process variant only adds gap from t
 		"src/renderer/src/components/session/AnswerOutput.tsx",
 		"utf8",
 	);
-	assert.match(answer, /execution-interim markdown-body my-3 text-chat/);
+	assert.match(answer, /execution-interim markdown-body my-1\.5 text-chat/);
 	assert.match(answer, /execution-interim markdown-body text-chat text-text-primary/);
 	assert.doesNotMatch(answer, /mt-3 text-chat/);
 });

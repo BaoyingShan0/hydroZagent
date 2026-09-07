@@ -61,7 +61,7 @@ test("streamdown chat prose density overrides official space-y-4 / heading scale
     streamdownChrome,
     /\.markdown-body :is\(\.space-y-4\) > :not\(:last-child\):not\(\[data-streamdown\^="heading-"\]\)/,
   );
-  assert.match(streamdownChrome, /margin-block-end:\s*0\.55em/);
+  assert.match(streamdownChrome, /\.markdown-body :is\(\.space-y-4\) > :not\(:last-child\):not\(\[data-streamdown\^="heading-"\]\)[^{]*\{[^}]*margin-block-end:\s*0\.7em/);
   assert.match(
     streamdownChrome,
     /\.markdown-body :is\(\.space-y-4\) > \[data-streamdown\^="heading-"\]/,

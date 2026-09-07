@@ -1858,12 +1858,16 @@ describe("ModelRegistry", () => {
 			});
 
 			test("getAvailable filters GitHub Copilot OAuth models to account picker availability", async () => {
+				const catalog = await createModelRegistry(authStorage, modelsJsonPath);
+				const copilotModels = getModelsForProvider(catalog, "github-copilot");
+				expect(copilotModels.length).toBeGreaterThan(1);
+				const allowedModelId = copilotModels[0].id;
 				await authStorage.modify("github-copilot", async () => ({
 					type: "oauth",
 					refresh: "github-access-token",
 					access: "tid=test;exp=9999999999;proxy-ep=proxy.individual.githubcopilot.com;",
 					expires: Date.now() + 60_000,
-					availableModelIds: ["gpt-4.1"],
+					availableModelIds: [allowedModelId],
 				}));
 
 				const registry = await createModelRegistry(authStorage, modelsJsonPath);
@@ -1873,7 +1877,7 @@ describe("ModelRegistry", () => {
 						.getAvailable()
 						.filter((m) => m.provider === "github-copilot")
 						.map((m) => m.id),
-				).toEqual(["gpt-4.1"]);
+				).toEqual([allowedModelId]);
 			});
 
 			test("getApiKeyAndHeaders resolves authHeader on every request", async () => {

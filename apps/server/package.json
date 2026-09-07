@@ -18,7 +18,7 @@
 		"migrate": "node dist/db/cli.js",
 		"start": "node dist/index.js",
 		"test": "vitest run --exclude test/integration/**",
-		"test:integration": "vitest run test/integration",
+		"test:integration": "vitest run --config vitest.integration.config.ts",
 		"typecheck": "tsc --noEmit -p tsconfig.json"
 	},
 	"dependencies": {

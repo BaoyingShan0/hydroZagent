@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "node:path";
 import { readFileSync } from "node:fs";
+import { X509Certificate } from "node:crypto";
 import type { Plugin } from "vite";
 import { readDevGitBranch, resolveDevVitePort } from "./src/main/devIsolation";
 
@@ -73,8 +74,15 @@ function managedBuildDefinitions(): Record<string, string> {
 		throw new Error("Managed HCS endpoint must be an HTTPS origin with a verifiable non-loopback hostname");
 	}
 	const caBundle = readFileSync(resolve(caBundlePath), "utf8");
-	if (!caBundle.includes("-----BEGIN CERTIFICATE-----") || !caBundle.includes("-----END CERTIFICATE-----")) {
+	const certificates = caBundle.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/gu);
+	if (!certificates?.length || caBundle.replace(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/gu, "").trim()) {
 		throw new Error("Managed HCS CA bundle is not a PEM certificate bundle");
+	}
+	for (const pem of certificates) {
+		const certificate = new X509Certificate(pem);
+		if (!certificate.ca || Date.parse(certificate.validFrom) > Date.now() || Date.parse(certificate.validTo) <= Date.now()) {
+			throw new Error("Managed HCS trust material must contain current CA certificates");
+		}
 	}
 	return {
 		__HYDRO_MANAGED__: "true",

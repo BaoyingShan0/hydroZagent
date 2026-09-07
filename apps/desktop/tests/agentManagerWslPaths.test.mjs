@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import ts from "typescript";
 import vm from "node:vm";
+import { loadTsCommonJs } from "./helpers/loadTsCommonJs.mjs";
 
 const require = createRequire(import.meta.url);
 
@@ -126,6 +127,7 @@ function loadAgentManager() {
 			if (id === "node:os") return { homedir: () => "C:\\Users\\tester" };
 			if (id === "../../shared/ipc") return { ipcChannels: {} };
 			if (id === "./PiProcess") return { PiProcess: class {} };
+			if (id === "../managed/usageProjection") return loadTsCommonJs("src/main/managed/usageProjection.ts");
 			if (id === "./bashResult") return { formatBashToolMessage: () => ({}) };
 			if (id === "./messageContent") return { extractMessageText: (value) => String(value ?? "") };
 			if (id === "./historyMessages") return { mergeHistoryWithPreservedMessages: (value) => value };

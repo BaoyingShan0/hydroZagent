@@ -260,10 +260,11 @@ test("ProcessMetricsTab wires table columns and refresh", () => {
 test("SettingsModal registers process tab; ConfigModal no longer hosts it", () => {
 	const settings = readFileSync("src/renderer/src/components/app/SettingsModal.tsx", "utf8");
 	const config = readFileSync("src/renderer/src/ConfigModal.tsx", "utf8");
+	const layout = readFileSync("src/renderer/src/components/app/settings/settingsTabLayout.ts", "utf8");
 	// 进程监控已从 Pi 管理界面迁入设置：SettingsModal 注册 tab，ConfigModal 移除
-	assert.match(settings, /id: "process"/);
+	assert.match(layout, /id: "process"/);
 	assert.match(settings, /<TabsContent value="process"/);
-	assert.match(settings, /t\("settings\.tabs\.process"\)/);
+	assert.match(settings, /process: \{ labelKey: "settings\.tabs\.process"/);
 	assert.match(settings, /<ProcessMetricsTab \/>/);
 	assert.doesNotMatch(config, /value="process"/);
 	assert.doesNotMatch(config, /ProcessMetricsTab/);

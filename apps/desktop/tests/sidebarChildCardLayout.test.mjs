@@ -65,7 +65,9 @@ test("sidebar workspace wrapper stays transparent", () => {
 });
 
 test("sidebar child titles truncate via component classes", () => {
-  assert.match(sessionTree, /truncate font-medium/);
+  assert.match(sessionTree, /<strong className="min-w-0 flex-1 truncate">\{child\.agent\.title\}<\/strong>/);
+  assert.match(sessionTree, /truncate font-normal/);
+  assert.match(sessionTree, /"min-w-0 flex-1 truncate", runtime \? "font-normal" : "font-normal text-muted-foreground\/90"/);
   assert.match(projectTree, /truncate font-medium/);
 });
 

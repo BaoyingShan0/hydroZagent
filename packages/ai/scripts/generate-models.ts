@@ -1571,8 +1571,19 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
 		}
 
 		// Process Cloudflare AI Gateway models
-		if (data["cloudflare-ai-gateway"]?.models) {
-			for (const [prefixedId, model] of Object.entries(data["cloudflare-ai-gateway"].models)) {
+		// Workers AI also uses Gateway's /compat route. Explicit Gateway
+		// metadata takes priority when both catalogs contain the same model.
+		const gatewayModels = {
+			...Object.fromEntries(
+				Object.entries(data["cloudflare-workers-ai"]?.models ?? {}).map(([id, model]) => [
+					`workers-ai/${id}`,
+					model,
+				]),
+			),
+			...data["cloudflare-ai-gateway"]?.models,
+		};
+		if (Object.keys(gatewayModels).length > 0) {
+			for (const [prefixedId, model] of Object.entries(gatewayModels)) {
 				const m = model as ModelsDevModel;
 				if (m.tool_call !== true) continue;
 

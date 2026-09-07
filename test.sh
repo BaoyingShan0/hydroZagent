@@ -3,12 +3,17 @@ set -euo pipefail
 
 # Isolate user resources, credentials, temporary files, and tool configuration.
 temp_parent="${TMPDIR:-/tmp}"
+# Windows user Temp is beneath the real home; ancestor resource discovery can
+# escape a fake HOME there. Use the system temp tree, outside all user homes.
+if [[ "${OS:-}" == "Windows_NT" ]]; then
+	temp_parent="$(cygpath -u "${SystemRoot:-C:\\Windows}/Temp")"
+fi
 temp_parent="${temp_parent%/}"
 test_root="$(mktemp -d "$temp_parent/pi-test.XXXXXX")"
 git_askpass="$(type -P false)"
 readonly temp_parent test_root git_askpass
 
-mkdir -p "$test_root/home/.config" "$test_root/tmp" "$test_root/cache/npm"
+mkdir -p "$test_root/home/.config" "$test_root/home/tmp" "$test_root/cache/npm"
 # Mark the generated root so cleanup can verify ownership before deleting it.
 touch "$test_root/.pi-test-owned" "$test_root/npm-userconfig" "$test_root/npm-globalconfig"
 
@@ -36,15 +41,23 @@ cleanup() {
 }
 trap cleanup EXIT
 
+runtime_home="$test_root/home"
+runtime_temp="$test_root/home/tmp"
+if [[ "${OS:-}" == "Windows_NT" ]]; then
+	runtime_home="$(cygpath -w "$test_root/home")"
+	runtime_temp="$(cygpath -w "$test_root/home/tmp")"
+fi
+readonly runtime_home runtime_temp
+
 # Start from an empty environment and allow only required platform and test settings.
 test_env=(
 	"PATH=$PATH"
 	"PWD=$PWD"
-	"HOME=$test_root/home"
-	"USERPROFILE=$test_root/home"
-	"TMPDIR=$test_root/tmp"
-	"TMP=$test_root/tmp"
-	"TEMP=$test_root/tmp"
+	"HOME=$runtime_home"
+	"USERPROFILE=$runtime_home"
+	"TMPDIR=$runtime_temp"
+	"TMP=$runtime_temp"
+	"TEMP=$runtime_temp"
 	"XDG_CONFIG_HOME=$test_root/home/.config"
 	"XDG_CACHE_HOME=$test_root/cache"
 	"LANG=C"

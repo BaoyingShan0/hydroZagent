@@ -22,7 +22,15 @@ class MockAssistantStream extends EventStream<AssistantMessageEvent, AssistantMe
 				throw new Error("Unexpected event type");
 			},
 		);
-		queueMicrotask(() => this.push({ type: "done", reason: message.stopReason, message }));
+		queueMicrotask(() => {
+			const reason = message.stopReason;
+			if (reason === "pending") throw new Error("Mock stream requires a terminal assistant message");
+			if (reason === "error" || reason === "aborted") {
+				this.push({ type: "error", reason, error: message });
+			} else {
+				this.push({ type: "done", reason, message });
+			}
+		});
 	}
 }
 
@@ -164,10 +172,13 @@ async function observeOneToolCall(
 			nextToolObservationSequence: () => ++observationSequence,
 			observeToolOutcome: (observation) => {
 				observations.push(observation);
+				return undefined;
 			},
 			...configOverrides,
 		},
-		(event) => events.push(event),
+		(event) => {
+			events.push(event);
+		},
 		undefined,
 		streamFn,
 	);
@@ -199,6 +210,7 @@ describe("S3 atomic parallel tool admission", () => {
 					latched ? { kind: "paused", pause: { pauseId: "pause-preflight" } } : { kind: "admitted", effect },
 				observeToolOutcome: (observation) => {
 					observations.push(observation);
+					return undefined;
 				},
 			},
 			events,
@@ -332,6 +344,7 @@ describe("S3 source-ordered tool observations", () => {
 				observeToolOutcome: (observation) => {
 					observations.push(observation);
 					controller.observe(observation);
+					return undefined;
 				},
 			},
 			events,
@@ -413,6 +426,7 @@ describe("S3 source-ordered tool observations", () => {
 				beforeToolEffect: ({ effect }) => ({ kind: "admitted", effect }),
 				observeToolOutcome: (observation) => {
 					order.push(`observe:${observation.toolCallId}`);
+					return undefined;
 				},
 			},
 			events,

@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { Sha256 } from "@aws-crypto/sha256-js";
 import {
 	CONVERGENCE_CANONICALIZER_VERSION,
 	CONVERGENCE_CONTROLLER_SCHEMA_VERSION,
@@ -57,7 +57,10 @@ export function canonicalJson(value: unknown): string {
 }
 
 export function convergenceHash(value: string): string {
-	return `${CONVERGENCE_HASH_ALGORITHM}:${createHash(CONVERGENCE_HASH_ALGORITHM).update(value).digest("hex")}`;
+	const hash = new Sha256();
+	hash.update(value);
+	const hex = Array.from(hash.digestSync(), (byte) => byte.toString(16).padStart(2, "0")).join("");
+	return `${CONVERGENCE_HASH_ALGORITHM}:${hex}`;
 }
 
 export function hashCanonicalJson(value: unknown): string {

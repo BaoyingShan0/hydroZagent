@@ -553,6 +553,7 @@ describe("AgentHarness tools", () => {
 			const controller = new AbortController();
 			let receivedContext: typeof context | undefined;
 			let receivedSignal: AbortSignal | undefined;
+			const pwd = process.platform === "win32" ? "pwd -W" : "pwd -P";
 			const tool = createBashTool<typeof context>({
 				commandPrefix: "prefix=ready",
 				prepare: async (execution, turnContext, signal) => {
@@ -561,7 +562,7 @@ describe("AgentHarness tools", () => {
 					execution.cwd = turnContext.workspace;
 					execution.env = { PI_BASH_PREPARE_EXPLICIT: "explicit" };
 					execution.inheritEnv = false;
-					execution.command += `\nprintf '%s:%s:%s:%s' "$prefix" "\${PI_BASH_PREPARE_INHERITED-}" "$PI_BASH_PREPARE_EXPLICIT" "$PWD"`;
+					execution.command += `\nprintf '%s:%s:%s:%s' "$prefix" "\${PI_BASH_PREPARE_INHERITED-}" "$PI_BASH_PREPARE_EXPLICIT" "$(${pwd})"`;
 				},
 			});
 
@@ -569,7 +570,9 @@ describe("AgentHarness tools", () => {
 
 			expect(receivedContext).toBe(context);
 			expect(receivedSignal).toBe(controller.signal);
-			expect(textOutput(result)).toBe(`ready::explicit:${getOrThrow(await env.canonicalPath(context.workspace))}`);
+			expect(textOutput(result)).toBe(
+				`ready::explicit:${getOrThrow(await env.canonicalPath(context.workspace)).replaceAll("\\", "/")}`,
+			);
 		});
 
 		it("supports command prefixes", async () => {
