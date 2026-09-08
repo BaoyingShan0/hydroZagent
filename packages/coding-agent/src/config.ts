@@ -375,16 +375,30 @@ export function getPackageDir(): string {
 		// Bun binary: process.execPath points to the compiled executable
 		return dirname(process.execPath);
 	}
-	// Node.js: walk up from __dirname until we find package.json
-	let dir = __dirname;
+	return findPackageDir(__dirname);
+}
+
+/** Find the nearest package directory for a Node.js entrypoint. */
+export function findPackageDir(startDir: string): string {
+	// build:binary copies package.json into dist for the standalone executable. That
+	// generated manifest may survive a later source build, but it must not turn
+	// dist into the package root for the Node.js CLI (which would resolve dist/dist).
+	let dir = startDir;
 	while (dir !== dirname(dir)) {
 		if (existsSync(join(dir, "package.json"))) {
-			return dir;
+			const parentDir = dirname(dir);
+			const isGeneratedManifestInSourceBuild =
+				basename(dir) === "dist" &&
+				existsSync(join(parentDir, "package.json")) &&
+				existsSync(join(parentDir, "src"));
+			if (!isGeneratedManifestInSourceBuild) {
+				return dir;
+			}
 		}
 		dir = dirname(dir);
 	}
 	// Fallback (shouldn't happen)
-	return __dirname;
+	return startDir;
 }
 
 /**
