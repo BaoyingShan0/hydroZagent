@@ -592,6 +592,8 @@ export function SessionContextMenu(props: {
 	onOpenLogs?: () => void;
 	onArchiveSession: () => void;
 	onDeleteSession: () => void;
+	onTogglePin: () => void;
+	pinned: boolean;
 }) {
 	const busy = Boolean(props.actionLoading);
 	// 历史会话（无 runtime）不展示 RPC 日志项：没有运行中的 pi 子进程就无日志可记/可看
@@ -603,6 +605,9 @@ export function SessionContextMenu(props: {
 			{props.allowProxySetting !== false && (
 				<DropdownMenuItem disabled={busy} onSelect={props.onOpenProxySetting}>{t("menu.sessionProxy")}</DropdownMenuItem>
 			)}
+			<DropdownMenuItem disabled={busy} onSelect={props.onTogglePin}>
+				{props.pinned ? "📌 " : "📎 "}{props.pinned ? t("menu.unpinSession") : t("menu.pinSession")}
+			</DropdownMenuItem>
 			{props.menu.session.backend !== "dsh" && (
 				<DropdownMenuItem disabled={busy} onSelect={props.onCopySession}>
 					{props.actionLoading === "copy" && <span className="mini-loader" />}

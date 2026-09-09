@@ -539,6 +539,7 @@ export function createPreviewApi(): PiDesktopApi {
 				nextBefore: null,
 			}),
 			editCatalogMessage: async () => ({ ok: true as const, value: undefined }),
+			pinCatalogSession: async () => true,
 			deleteCatalogMessage: async () => ({ ok: true as const, value: undefined }),
 			prepareCatalogResend: async () => ({ ok: true as const, value: { text: "" } }),
 			readProcessEvents: async () => [],
@@ -931,6 +932,13 @@ export function createPreviewApi(): PiDesktopApi {
 				valid: true,
 				warnings: [],
 			}),
+			// Web 预览无法访问本机文件系统：zip 导入不可用，统一走失败结果
+			importZip: async (filePaths) =>
+				filePaths.map((file) => ({
+					file,
+					status: "failed" as const,
+					error: "Web preview cannot import zip files.",
+				})),
 		},
 		extensions: {
 			list: async (_forceRefresh = false) => ({

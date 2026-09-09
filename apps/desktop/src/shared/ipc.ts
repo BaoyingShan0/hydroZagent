@@ -69,6 +69,7 @@ export const ipcChannels = {
 	sessionsCatalogListArchived: "sessions:catalog-list-archived",
 	sessionsCatalogReadMessages: "sessions:catalog-read-messages",
 	sessionsCatalogReadMessagePage: "sessions:catalog-read-message-page",
+	sessionsCatalogPin: "sessions:catalog-pin",
 	/** 会话 JSONL 过程事件（session/model/thinking/custom/compaction），供轨迹复盘，不进聊天时间线。 */
 	sessionsCatalogReadProcessEvents: "sessions:catalog-read-process-events",
 	/** DSH 会话轨迹系统提示（request/header 事件的 EpochHeader.system；非 DSH/无数据返回 undefined）。 */
@@ -195,6 +196,7 @@ export const ipcChannels = {
 	skillsDelete: "skills:delete",
 	skillsOpenFolder: "skills:open-folder",
 	skillsRename: "skills:rename",
+	skillsImportZip: "skills:import-zip",
 	promptsList: "prompts:list",
 	promptsCreate: "prompts:create",
 	promptsDelete: "prompts:delete",

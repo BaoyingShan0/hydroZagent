@@ -59,6 +59,8 @@ export type SessionCatalogEntry = {
 	proxy?: SessionProxyOverride;
 	/** PiDeck 自有的逐轮用户反馈；与会话记录一起持久化，不改写后端会话日志。 */
 	turnFeedback?: SessionTurnFeedback[];
+	/** 会话是否置顶（从 JSONL 文件头部的 session_pinned marker 行读取，置顶会话始终显示在列表最上方） */
+	pinned?: boolean;
 	createdAt: number;
 	updatedAt: number;
 };
@@ -902,6 +904,7 @@ export class SessionCatalog {
 						importedSourceId,
 						status: "active",
 						parentSessionPath: summary.parentSessionPath,
+						pinned: summary.pinned || undefined,
 						createdAt: now,
 						updatedAt: now,
 					};
@@ -926,6 +929,7 @@ export class SessionCatalog {
 						entry.importedSourceId !== importedSourceId ||
 						entry.status !== "active" ||
 						entry.parentSessionPath !== summary.parentSessionPath ||
+						entry.pinned !== summary.pinned ||
 						entry.updatedAt !== summary.updatedAt
 					) {
 						entry.projectId = projectId;
@@ -940,6 +944,7 @@ export class SessionCatalog {
 						// 子会话的父子关系可能随后续扫描才被识别（parent 文件出现/路径推断补全），
 						// 变化必须计入 changed 才会落盘，否则重拉后仍以孤儿平铺。
 						entry.parentSessionPath = summary.parentSessionPath;
+						entry.pinned = summary.pinned || undefined;
 						entry.updatedAt = summary.updatedAt;
 						changed = true;
 					}
@@ -1056,6 +1061,7 @@ export class SessionCatalog {
 			codexParentThreadId: summary?.codexParentThreadId,
 			codexAgentRole: summary?.codexAgentRole,
 			codexAgentNickname: summary?.codexAgentNickname,
+			pinned: entry.pinned || summary?.pinned,
 		};
 	}
 

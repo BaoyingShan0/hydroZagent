@@ -34,6 +34,17 @@ export type SkillContentResult = {
 	content: string;
 };
 
+/** 技能 zip 压缩包导入结果（单个文件粒度，支持批量导入部分成功） */
+export type PiSkillImportResult = {
+	/** 源 zip 文件路径 */
+	file: string;
+	status: "imported" | "skipped" | "failed";
+	/** 导入/跳过时的技能名 */
+	name?: string;
+	/** skipped/failed 时的原因（主进程已翻译） */
+	error?: string;
+};
+
 export type CreatePiSkillInput = {
 	name: string;
 	description: string;

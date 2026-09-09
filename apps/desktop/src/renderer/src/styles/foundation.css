@@ -1523,6 +1523,18 @@ select:focus-visible {
 .custom-titlebar-enabled button {
   -webkit-app-region: no-drag;
 }
+/* 插件/技能/专家等独立页面的顶部导航条：
+   - z-index 930 与 session-tabs-bar 同层，盖过 window-drag-layer(900)，
+     否则透明拖拽热区会吞掉整个顶部 48px 的鼠标事件（返回箭头点不动）；
+   - 整条 no-drag：点击标题文字/空白区域不会误触发窗口拖动。 */
+.page-topbar {
+  position: relative;
+  z-index: 930;
+}
+.page-topbar,
+.page-topbar * {
+  -webkit-app-region: no-drag;
+}
 /* 抽屉开合的 grid 过渡随布局换装移除（#115 U5）；drawer-open/drawer-collapsed
    class 保留仅为语义/选择器兼容。 */
 

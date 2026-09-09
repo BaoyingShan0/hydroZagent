@@ -36,6 +36,7 @@ export function sessionRecordToSummary(
     codexParentThreadId: session.codexParentThreadId,
     codexAgentRole: session.codexAgentRole,
     codexAgentNickname: session.codexAgentNickname,
+    pinned: session.pinned || undefined,
   };
 }
 

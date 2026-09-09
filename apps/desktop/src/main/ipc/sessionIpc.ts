@@ -4,6 +4,7 @@
  */
 
 import { ipcMain, type BrowserWindow } from "electron";
+import { readFile, writeFile } from "node:fs/promises";
 import { ipcChannels } from "../../shared/ipc";
 import { isDshPermissionPreset } from "../../shared/types/agent";
 import { isSessionTurnFeedbackInput } from "../../shared/types/session";
@@ -1681,6 +1682,47 @@ export function registerSessionIpc(deps: SessionIpcDeps): void {
 				sourceCount: sourcePaths.length,
 			});
 			return result;
+		},
+	);
+	// ── 会话置顶（sessionPin）───────────────────────────────────────
+	ipcMain.handle(
+		ipcChannels.sessionsCatalogPin,
+		async (_event, sessionId: string, pinned: boolean) => {
+			const entry = sessionCatalog.get(sessionId);
+			if (!entry?.filePath) return false;
+			try {
+				const content = await readFile(entry.filePath, "utf-8");
+				const lines = content.split(/\r?\n/);
+				const marker = "{\"type\":\"session_pinned\",\"pinned\":true}";
+				const existingIdx = lines.findIndex((line) => line.startsWith(marker));
+				if (pinned && existingIdx === -1) {
+					// 置顶：在文件头部插入 marker
+					lines.unshift(marker);
+				} else if (!pinned && existingIdx !== -1) {
+					// 取消置顶：删除已有的 marker 行
+					lines.splice(existingIdx, 1);
+				} else if (pinned && existingIdx !== -1) {
+					// 已经是置顶状态：无需操作
+					return true;
+				}
+				const next = lines.filter(Boolean).join("\n") + "\n";
+				if (content !== next) {
+					await writeFile(entry.filePath, next, "utf-8");
+				}
+				void appLogger.info("session", "Session pin toggled", {
+					sessionId,
+					pinned,
+					filePath: entry.filePath,
+				});
+				return true;
+			} catch (error) {
+				void appLogger.error("session", "Session pin failed", {
+					sessionId,
+					pinned,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				return false;
+			}
 		},
 	);
 }

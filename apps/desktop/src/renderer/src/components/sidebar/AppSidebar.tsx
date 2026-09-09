@@ -31,6 +31,10 @@ interface AppSidebarProps {
   settingsLoaded: boolean;
   /** 展开集合完成权威 hydration 后，允许 App 按它懒加载会话。 */
   onExpandedProjectsReady: () => void;
+  /** 当前激活的页面 */
+  activePage?: string;
+  /** 切换页面回调 */
+  onNavigate?: (page: string) => void;
 }
 
 export function AppSidebar(props: AppSidebarProps) {
@@ -85,6 +89,8 @@ export function AppSidebar(props: AppSidebarProps) {
       onOpenConfig={props.onOpenConfig}
       onOpenFeedback={props.onOpenFeedback}
       onOpenHomepage={props.onOpenHomepage}
+      activePage={props.activePage}
+      onNavigate={props.onNavigate}
     />
     </>
   );

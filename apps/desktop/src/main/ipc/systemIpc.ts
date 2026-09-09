@@ -13,6 +13,7 @@ import type {
 	AppUpdateAsset,
 	AvailableModel,
 	CreatePiSkillInput,
+	PiSkillLocation,
 	SessionCommandResult,
 	SessionRuntimeTarget,
 } from "../../shared/types";
@@ -991,6 +992,19 @@ export function registerSystemIpc(deps: SystemIpcDeps): void {
 	});
 	ipcMain.handle(ipcChannels.skillsOpenFolder, (_event, path?: string) =>
 		skillManager.openFolder(path),
+	);
+	ipcMain.handle(
+		ipcChannels.skillsImportZip,
+		async (_event, filePaths: string[], locationId?: PiSkillLocation["id"]) => {
+			const paths = Array.isArray(filePaths) ? filePaths : [];
+			const results = await skillManager.importFromZip(paths, locationId);
+			void appLogger.info("skill", "Skills zip import finished", {
+				total: results.length,
+				imported: results.filter((item) => item.status === "imported").length,
+				failed: results.filter((item) => item.status === "failed").length,
+			});
+			return results;
+		},
 	);
 
 	// ── 配置管理 ─────────────────────────────────────────────────────

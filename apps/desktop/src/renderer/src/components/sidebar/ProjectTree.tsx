@@ -1,4 +1,4 @@
-import { ChevronsDownUp, ChevronRight, Ellipsis, Filter, Folder, FolderCog, FolderOpen, FolderPlus, HatGlasses, Plus } from "lucide-react";
+import { ChevronsDownUp, ChevronRight, Ellipsis, Filter, Folder, FolderCog, FolderOpen, FolderPlus, HatGlasses, Plus, Puzzle, Sparkles, Users } from "lucide-react";
 import type { DragEvent } from "react";
 import type { Project, WorktreeEntry } from "../../../../shared/types";
 import type { SidebarController } from "../../hooks/useSidebarController";

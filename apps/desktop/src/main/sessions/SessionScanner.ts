@@ -74,6 +74,7 @@ type SessionScanLine = {
   parentThreadId?: string;
   agentRole?: string;
   agentNickname?: string;
+  pinned?: boolean;
   role?: string;
   content?: unknown;
   model?: string;
@@ -1510,6 +1511,8 @@ export class SessionScanner {
     let hasImageGen = false;
     /** 最后一条 assistant 消息携带的 provider/model（旧格式兼容回退）。 */
     let lastAssistantModel: { provider: string; modelId: string } | undefined;
+    /** 会话是否置顶（从文件头部的 session_pinned marker 行读取） */
+    let pinned = false;
 
     for (const line of lines) {
       let parsed: unknown;
@@ -1550,6 +1553,10 @@ export class SessionScanner {
 
       projectPath ||= entry.cwd || entry.projectPath || entry.header?.cwd || entry.data?.cwd || entry.session?.cwd || entry.data?.session?.cwd;
 
+      // 置顶标记（marker 行位于文件头部）
+      if (entry.type === "session_pinned" && entry.pinned === true) {
+        pinned = true;
+      }
       // Track the last model_change / thinking_level_change so the catalog can
       // surface them to the renderer even when the Agent is not running.
       if (entry.type === "model_change") {
@@ -1684,6 +1691,8 @@ export class SessionScanner {
       hasImageGen: hasImageGen || undefined,
       // 标记 WSL 来源，供 rename/delete/copy/readMessages 等操作识别
       wsl: isWsl || undefined,
+      // 会话置顶标记（从文件头部 marker 行读取）
+      pinned: pinned || undefined,
     };
     this.summaryCache.set(filePath, version, summary);
     return summary;

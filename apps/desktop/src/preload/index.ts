@@ -85,6 +85,8 @@ import type {
 	PiUpdateCheckResult,
 	PiSkillListResult,
 	PiSkillSummary,
+	PiSkillImportResult,
+	PiSkillLocation,
 	SkillContentResult,
 	Project,
 	PromptStoreSearchResult,
@@ -447,6 +449,13 @@ const api = {
 				messageId,
 				newText,
 			) as Promise<SessionCommandResult<void>>,
+		/** 切换会话置顶状态：在 JSONL 头部写入或移除 session_pinned marker 行 */
+		pinCatalogSession: (sessionId: string, pinned: boolean) =>
+			ipcRenderer.invoke(
+				ipcChannels.sessionsCatalogPin,
+				sessionId,
+				pinned,
+			) as Promise<boolean>,
 		/** 无 runtime 时直接改 JSONL（删除）。运行中必须先停 Agent。 */
 		deleteCatalogMessage: (sessionId: string, messageId: string) =>
 			ipcRenderer.invoke(
@@ -1151,6 +1160,12 @@ const api = {
 			ipcRenderer.invoke(ipcChannels.skillsOpenFolder, path) as Promise<void>,
 		rename: (skillPath: string, newName: string) =>
 			ipcRenderer.invoke(ipcChannels.skillsRename, skillPath, newName) as Promise<PiSkillSummary>,
+		importZip: (filePaths: string[], locationId?: PiSkillLocation["id"]) =>
+			ipcRenderer.invoke(
+				ipcChannels.skillsImportZip,
+				filePaths,
+				locationId,
+			) as Promise<PiSkillImportResult[]>,
 	},
 	prompts: {
 		list: () =>

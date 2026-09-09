@@ -1,4 +1,4 @@
-import { Search, Settings, Sliders, MessageSquare, Globe, FolderPlus } from "lucide-react";
+import { Search, Settings, Sliders, MessageSquare, Globe, FolderPlus, Puzzle, Sparkles, Users, ArrowLeft, MessageSquarePlus } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import type { AgentTab, Project, SessionRecord, SessionSummary, WorktreeEntry } from "../../../../shared/types";
 import {
@@ -17,6 +17,7 @@ import { sessionRecordToSummary } from "../../atoms";
 import { isManagerSessionSummary } from "../../sessionManagerModel";
 import { t } from "../../i18n";
 import { showNotice } from "../../utils/notice";
+import { desktopApi } from "../../desktopApi";
 import { getBoundSidebarRuntimeAgent, getBoundSidebarRuntimeAgentByAgentId, type SidebarController, type SidebarRpcLog } from "../../hooks/useSidebarController";
 import { ProjectTree } from "./ProjectTree";
 import { Button } from "../ui-shadcn/button";
@@ -100,6 +101,10 @@ export type SidebarContentProps = {
   onOpenConfig?: () => void;
   onOpenFeedback?: () => void;
   onOpenHomepage?: () => void;
+  /** 当前激活的页面：'chat' | 'extensions' | 'skills' | 'experts' */
+  activePage?: string;
+  /** 切换页面回调 */
+  onNavigate?: (page: string) => void;
 };
 
 export function SidebarContent(props: SidebarContentProps) {
@@ -180,6 +185,60 @@ export function SidebarContent(props: SidebarContentProps) {
             <FolderPlus className="size-3.5" />
           </Button>
         </div>
+
+        {/* 插件、技能 & 专家导航按钮 */}
+        {props.onNavigate && (
+          <div className="grid grid-cols-3 gap-1.5 px-1 py-1">
+            {[
+              { id: "extensions", label: t("app.nav.extensions"), icon: Puzzle },
+              { id: "skills", label: t("app.nav.skills"), icon: Sparkles },
+              { id: "experts", label: t("app.nav.experts"), icon: Users },
+            ].map((item) => {
+              const Icon = item.icon;
+              const isActive = props.activePage === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={[
+                    "flex flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 text-[10px] font-medium transition-all duration-200",
+                    isActive
+                      ? "bg-primary/15 text-primary shadow-sm"
+                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                  ].join(" ")}
+                  onClick={() => {
+                    console.log("[SidebarContent] 点击导航按钮，page=", item.id);
+                    props.onNavigate!(item.id);
+                  }}
+                  title={item.label}
+                >
+                  <Icon size={14} aria-hidden="true" />
+                  <span className="truncate">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* 返回聊天按钮（当处于子页面时显示）- 放在导航按钮下方，滚动区域上方 */}
+        {props.onNavigate && props.activePage && (
+          <div className="mx-1 mb-1">
+            <button
+              type="button"
+              className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-[11px] font-medium text-primary transition-all duration-200 hover:border-primary/50 hover:bg-primary/20"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log("[SidebarContent] 点击返回聊天按钮");
+                props.onNavigate!("__chat__");
+              }}
+              title={t("app.chatProject")}
+            >
+              <MessageSquarePlus size={14} aria-hidden="true" />
+              <span>{t("app.chatProject")}</span>
+            </button>
+          </div>
+        )}
 
         {/* 单一滚动区承载项目与展开内容，避免项目导航/详情双滚动和重复标题。
             scrollbar-gutter: stable：滚动条出现/消失时列表宽度不跳变（与抽屉一致）。 */}
@@ -350,6 +409,12 @@ export function SidebarContent(props: SidebarContentProps) {
           }}
           onArchiveSession={() => { void actions.sessions.archive(menu.projectId, menuSession); controller.closeMenu(); }}
           onDeleteSession={() => { void actions.sessions.delete(menu.projectId, menuSession); controller.closeMenu(); }}
+          onTogglePin={() => {
+            void desktopApi.sessions.pinCatalogSession(menuSession.id, !menuSession.pinned).then((ok) => {
+              if (ok) controller.closeMenu();
+            });
+          }}
+          pinned={Boolean(menuSession.pinned)}
         />
       )}
       {/* 会话代理设置弹框（菜单项「会话代理」打开；会话 id 为 null 时关闭） */}

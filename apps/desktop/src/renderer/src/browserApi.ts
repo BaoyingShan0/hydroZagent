@@ -266,6 +266,7 @@ export function createBrowserApi(): PiDesktopApi {
 				ok: false as const,
 				error: { code: "SESSION_COMMAND_FAILED" as const, debugDetails: "catalog message mutation is desktop-only" },
 			}),
+			pinCatalogSession: async () => false,
 			deleteCatalogMessage: async () => ({
 				ok: false as const,
 				error: { code: "SESSION_COMMAND_FAILED" as const, debugDetails: "catalog message mutation is desktop-only" },

@@ -1,7 +1,10 @@
 import { shell } from "electron";
+import { execFile } from "node:child_process";
 import { existsSync, type Dirent } from "node:fs";
 import {
+	cp,
 	mkdir,
+	mkdtemp,
 	readdir,
 	readFile,
 	realpath,
@@ -10,11 +13,12 @@ import {
 	stat,
 	writeFile,
 } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { homedir } from "node:os";
+import { basename, dirname, join } from "node:path";
+import { homedir, tmpdir } from "node:os";
 import { trashPath } from "../fs/trash";
 import type {
 	CreatePiSkillInput,
+	PiSkillImportResult,
 	PiSkillListResult,
 	PiSkillLocation,
 	PiSkillSummary,
@@ -128,6 +132,98 @@ export class SkillManager {
 		}
 		const skill = await this.findByPath(skillPath);
 		await shell.openPath(skill.dir);
+	}
+
+	/**
+	 * 从 zip 压缩包导入技能（技能页上传入口）。
+	 * 流程：解压到临时目录 → 定位 SKILL.md（根目录或一级子目录）→
+	 * 解析 frontmatter 得到名称/描述 → 复制到目标技能目录。
+	 * 单个文件失败不影响批量中其他文件；同名已存在时跳过（不覆盖用户已有技能）。
+	 */
+	async importFromZip(
+		zipPaths: string[],
+		locationId: PiSkillLocation["id"] = "pi-global",
+	): Promise<PiSkillImportResult[]> {
+		const location = this.requireLocation(locationId);
+		await mkdir(location.path, { recursive: true });
+		const usedNames = new Set<string>();
+		const results: PiSkillImportResult[] = [];
+		for (const zipPath of zipPaths) {
+			try {
+				if (!/\.zip$/i.test(zipPath)) throw new Error(this.translate("mainSkill.notZipFile"));
+				const tempRoot = await mkdtemp(join(tmpdir(), "skill-import-"));
+				try {
+					await this.extractZip(zipPath, tempRoot);
+					const skillRoot = await this.locateSkillRoot(tempRoot);
+					if (!skillRoot) throw new Error(this.translate("mainSkill.zipMissingSkillMd"));
+					const raw = await readFile(join(skillRoot, SKILL_FILE), "utf8");
+					const frontmatter = this.parseFrontmatter(raw);
+					// 优先用 frontmatter 的 name；缺失时退回压缩包内一级目录名 / zip 文件名
+					const fallback = basename(skillRoot) === basename(tempRoot)
+						? basename(zipPath).replace(/\.zip$/i, "")
+						: basename(skillRoot);
+					const name = this.normalizeSkillName(String(frontmatter.name ?? "") || fallback);
+					if (!name) throw new Error(this.translate("mainSkill.nameRequiredDetailed"));
+					if (usedNames.has(name) || existsSync(join(location.path, name))) {
+						results.push({
+							file: zipPath,
+							status: "skipped",
+							name,
+							error: this.translate("mainSkill.alreadyExists", { name }),
+						});
+						continue;
+					}
+					usedNames.add(name);
+					const targetDir = join(location.path, name);
+					await cp(skillRoot, targetDir, { recursive: true });
+					// 从真实落盘位置读摘要，确保 enabled/valid/warnings 与列表渲染一致
+					const summary = await this.readSkill(join(targetDir, SKILL_FILE), location, "directory");
+					results.push({ file: zipPath, status: "imported", name, ...summary.warnings.length > 0 ? { error: summary.warnings.join("；") } : {} });
+				} finally {
+					await rm(tempRoot, { recursive: true, force: true }).catch(() => undefined);
+				}
+			} catch (err) {
+				results.push({
+					file: zipPath,
+					status: "failed",
+					error: err instanceof Error ? err.message : String(err),
+				});
+			}
+		}
+		return results;
+	}
+
+	/** 解压 zip：Win/macOS 的 tar 为 bsdtar 可直接解 zip；Linux 优先 unzip。 */
+	private async extractZip(zipPath: string, targetDir: string): Promise<void> {
+		const run = (cmd: string, args: string[]) =>
+			new Promise<void>((resolve, reject) => {
+				execFile(cmd, args, { windowsHide: true }, (error) => {
+					if (error) reject(error);
+					else resolve();
+				});
+			});
+		if (process.platform === "win32" || process.platform === "darwin") {
+			await run("tar", ["-xf", zipPath, "-C", targetDir]);
+			return;
+		}
+		try {
+			await run("unzip", ["-o", zipPath, "-d", targetDir]);
+		} catch {
+			// unzip 不存在时退回 tar（部分发行版的 tar 为 bsdtar）
+			await run("tar", ["-xf", zipPath, "-C", targetDir]);
+		}
+	}
+
+	/** 定位解压后 SKILL.md 所在目录：先看临时根目录，再扫一级子目录。 */
+	private async locateSkillRoot(root: string): Promise<string | null> {
+		const entries = await readdir(root, { withFileTypes: true }).catch(() => [] as Dirent[]);
+		if (entries.some((entry) => entry.isFile() && entry.name === SKILL_FILE)) return root;
+		for (const entry of entries) {
+			if (!entry.isDirectory()) continue;
+			const inner = await readdir(join(root, entry.name)).catch(() => [] as string[]);
+			if (inner.includes(SKILL_FILE)) return join(root, entry.name);
+		}
+		return null;
 	}
 
 	private async scanLocation(location: PiSkillLocation): Promise<PiSkillSummary[]> {

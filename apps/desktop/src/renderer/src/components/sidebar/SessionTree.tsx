@@ -128,7 +128,11 @@ export function SessionTree(props: {
     .filter((session) => !displayedSessionIds.has(session.id))
     .filter((session) => matchesSearch(session.title, search))
     .filter((session) => filter === null || filter.has(session.source))
-    .sort((left, right) => right.updatedAt - left.updatedAt);
+    .sort((left, right) => {
+      const pinnedDelta = (right.pinned ? 1 : 0) - (left.pinned ? 1 : 0);
+      if (pinnedDelta !== 0) return pinnedDelta;
+      return right.updatedAt - left.updatedAt;
+    });
   const catalogLoading = props.controller.catalog.catalogLoadStateByProject[props.project.id]?.status === "loading";
   const hasRows = catalogLoading || draftSessions.length > 0 || display.visibleChildren.length > 0 || display.hiddenChildCount > 0;
   if (!hasRows) return null;

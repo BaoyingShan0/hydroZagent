@@ -37,6 +37,9 @@ const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "a
 const ConfigModal = lazy(() => import("./ConfigModal").then((m) => ({ default: m.ConfigModal })));
 import { type SidebarActions } from "./components/sidebar/SidebarContent";
 import { AppSidebar } from "./components/sidebar/AppSidebar";
+import { ExtensionsPage } from "./components/pages/ExtensionsPage";
+import { SkillsPage } from "./components/pages/SkillsPage";
+import { ExpertsPage } from "./components/pages/ExpertsPage";
 import { AppBootstrap } from "./components/app/AppBootstrap";
 import { HydroBrandMark } from "./components/app/HydroBrandMark";
 import { ManagedAccessOverlay } from "./components/managed/ManagedAccessOverlay";
@@ -238,6 +241,12 @@ export function App() {
   /** 侧栏 π logo 重播令牌：agent 启动（含历史会话）/关闭时递增，驱动 BrandLockup 动画 */
   const [brandLogoReplayToken, setBrandLogoReplayToken] = useState(0);
   const [activeProjectId, setActiveProjectId] = useState<string>();
+  /** 当前激活的侧边栏页面：'chat' | 'extensions' | 'skills' | 'experts' */
+  const [activePage, setActivePage] = useState<string | undefined>();
+  /** 统一的页面导航回调（聊天 / 插件 / 技能 / 专家），侧边栏和页面返回箭头共用 */
+  const onNavigate = useCallback((page: string | undefined) => {
+    setActivePage(page === "__chat__" ? undefined : page);
+  }, []);
   const activeProjectIdRef = useRef<string | undefined>(activeProjectId);
   activeProjectIdRef.current = activeProjectId;
   const activeAgentId = useAtomValue(activeAgentIdAtom);
@@ -2762,6 +2771,8 @@ export function App() {
       creatingWorktree={worktreeCreating}
       isLanWeb={isLanWeb}
       managedMode={managedMode}
+      activePage={activePage}
+      onNavigate={onNavigate}
       onOpenConfig={() => {
         if (!managedMode) setConfigOpen(true);
       }}
@@ -3155,6 +3166,9 @@ export function App() {
     />
   );
 
+  // 页面内容：当 activePage 为 extensions/skills/experts 时，替换主内容区
+  const isPageActive = activePage === "extensions" || activePage === "skills" || activePage === "experts";
+
   // ── DrawerSurface port objects (stable via useMemo) ──
   const drawerPorts = useDrawerPorts({
     enableGitManagement: settings.enableGitManagement, activeProjectId,
@@ -3258,7 +3272,15 @@ export function App() {
       terminalRowHeight={terminalRowHeight}
       chatContentWidthPct={settings.chatContentWidthPct}
       sidebarContent={sidebarContentNode}
-      chatPaneContent={chatPaneContentNode}
+      chatPaneContent={isPageActive ? (
+        <div key={activePage} className="flex h-full flex-col">
+          {activePage === "extensions" && <ExtensionsPage onNavigate={onNavigate} />}
+          {activePage === "skills" && <SkillsPage onNavigate={onNavigate} />}
+          {activePage === "experts" && <ExpertsPage onNavigate={onNavigate} />}
+        </div>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col">{chatPaneContentNode}</div>
+      )}
       drawerRail={
         <WorkspaceDrawerRail
           actions={[

@@ -150,6 +150,8 @@ export type SessionSummary = {
 	codexParentThreadId?: string;
 	codexAgentRole?: string;
 	codexAgentNickname?: string;
+	/** 会话是否置顶（置顶会话始终显示在列表最上方，不受排序规则影响） */
+	pinned?: boolean;
 };
 
 /** PiDeck-owned session identity, independent from a running Pi process. */
@@ -195,6 +197,8 @@ export type SessionRecord = {
 	codexParentThreadId?: string;
 	codexAgentRole?: string;
 	codexAgentNickname?: string;
+	/** 会话是否置顶（置顶会话始终显示在列表最上方，不受排序规则影响） */
+	pinned?: boolean;
 };
 
 export type CreateSessionDraftInput = {
