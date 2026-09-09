@@ -159,7 +159,14 @@ export default defineConfig({
         "use-sync-external-store",
         "@standard-schema/spec",
         "@workflow/serde",
+        "@lezer/highlight",
+        "@codemirror/language",
       ],
+    },
+    // Vite 7 默认使用 esbuild 进行依赖预构建，但某些 ESM-only 包可能出现动态导入问题。
+    // 配置 ssr.noExternal 确保这些包在预构建时被正确打包。
+    ssr: {
+      noExternal: ["@lezer/highlight", "@codemirror/language"],
     },
     resolve: {
       alias: {
