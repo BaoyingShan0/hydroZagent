@@ -41,6 +41,9 @@ todo.md
 plans/
 .pi/hf-sessions/
 .pi/hf-sessions-backup/
+/.pi/skills/data_samples/
+/.pi/skills/zhicheng-review/
+/.pi/skills/zhicheng-review.7z
 collect.sh
 
 # Legacy PiDeck-only assets are not part of the integrated hydroZagent product.

@@ -439,10 +439,25 @@ export function getProjectAgentSessionDisplay({
 		}
 	}
 
-	children.sort((left, right) => right.sortAt - left.sortAt);
+	// 置顶会话固定显示在列表最前；且不因「只看前 N 条」的折叠上限被藏起来。
+	// Agent 行只要关联到 catalog 会话就会以 type:"session" 行渲染，pinned 直接取自该会话。
+	const childPinned = (child: ProjectChildItem): boolean =>
+		child.type === "session" ? Boolean(child.session.pinned) : false;
+	children.sort((left, right) => {
+		const leftPinned = childPinned(left) ? 1 : 0;
+		const rightPinned = childPinned(right) ? 1 : 0;
+		if (leftPinned !== rightPinned) return rightPinned - leftPinned;
+		return right.sortAt - left.sortAt;
+	});
 
 	const limit = visibleChildCount ?? DEFAULT_VISIBLE_PROJECT_CHILD_LIMIT;
-	const visibleChildren = children.slice(0, limit);
+	const pinnedChildren = children.filter(childPinned);
+	const unpinnedChildren = children.filter((child) => !childPinned(child));
+	// 折叠上限只约束非置顶条目：置顶全部展示，非置顶再按排序取到 limit 为止。
+	const visibleChildren = [
+		...pinnedChildren,
+		...unpinnedChildren.slice(0, Math.max(0, limit - pinnedChildren.length)),
+	];
 	return {
 		children,
 		visibleChildren,

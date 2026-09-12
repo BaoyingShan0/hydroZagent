@@ -621,6 +621,8 @@ export class SessionCatalog {
 			/** 切到生图后端时甩开 pi 会话文件引用（null = 清空）。 */
 			filePath?: string | null;
 			piSessionId?: string | null;
+			/** 会话置顶状态（由 session pin IPC 操作更新）。 */
+			pinned?: boolean;
 		},
 	): Promise<SessionRecord> {
 		this.assertLoaded();
@@ -643,6 +645,7 @@ export class SessionCatalog {
 					Date.now(),
 				);
 			}
+			if (patch.pinned !== undefined) transient.pinned = patch.pinned;
 			transient.updatedAt = patch.updatedAt ?? Date.now();
 			return this.recordFromEntry(transient);
 		}
@@ -664,6 +667,7 @@ export class SessionCatalog {
 					Date.now(),
 				);
 			}
+			if (patch.pinned !== undefined) nextEntry.pinned = patch.pinned;
 			nextEntry.updatedAt = patch.updatedAt ?? Date.now();
 			return { value: cloneEntry(nextEntry), changed: true };
 		});
@@ -918,6 +922,16 @@ export class SessionCatalog {
 						|| catalogDisplayTitle(fetchedTitle)
 						|| catalogDisplayTitle(entry.title)
 						|| scannedFileStemTitle(summary.filePath);
+					// 保留用户置顶状态：草稿期 pin 的会话，激活创建文件时文件里还没有 marker，
+					// 扫描器对无 marker 文件返回 pinned=undefined（不是 false），会覆盖掉 catalog 中已保存的 pinned=true。
+					// 规则：任一侧为 true（文件有 marker / catalog 已置顶）即视为置顶；
+					// 显式取消置顶会同时删除 marker 并更新 catalog=false，扫描后自然清除。
+					const preservedPinned =
+						summary.pinned === true || entry.pinned === true
+							? true
+							: undefined;
+					const pinnedChanged =
+						(entry.pinned ?? false) !== (preservedPinned ?? false);
 					if (
 						entry.projectId !== projectId ||
 						entry.filePath !== summary.filePath ||
@@ -929,7 +943,6 @@ export class SessionCatalog {
 						entry.importedSourceId !== importedSourceId ||
 						entry.status !== "active" ||
 						entry.parentSessionPath !== summary.parentSessionPath ||
-						entry.pinned !== summary.pinned ||
 						entry.updatedAt !== summary.updatedAt
 					) {
 						entry.projectId = projectId;
@@ -944,8 +957,12 @@ export class SessionCatalog {
 						// 子会话的父子关系可能随后续扫描才被识别（parent 文件出现/路径推断补全），
 						// 变化必须计入 changed 才会落盘，否则重拉后仍以孤儿平铺。
 						entry.parentSessionPath = summary.parentSessionPath;
-						entry.pinned = summary.pinned || undefined;
+						entry.pinned = preservedPinned;
 						entry.updatedAt = summary.updatedAt;
+						changed = true;
+					} else if (pinnedChanged) {
+						// 仅 pinned 被保留（草稿 pin → 文件扫描覆盖）：需标记 changed 以便落盘
+						entry.pinned = preservedPinned;
 						changed = true;
 					}
 				}
@@ -970,8 +987,9 @@ export class SessionCatalog {
 					canonicalizeSessionPath(record.parentSessionPath, record.environment),
 				);
 			}
+			// 置顶会话排在最前面，非置顶会话按 updatedAt 降序排列
 			return {
-				value: records.sort((left, right) => right.updatedAt - left.updatedAt),
+				value: records.sort(sortSessionRecords),
 				changed,
 			};
 		}).then((records) => [
@@ -979,7 +997,7 @@ export class SessionCatalog {
 				.filter((entry) => entry.projectId === projectId)
 				.map((entry) => this.recordFromEntry(entry)),
 			...records,
-		].sort((left, right) => right.updatedAt - left.updatedAt));
+		].sort(sortSessionRecords));
 	}
 
 	/** 只对「该会话当前标题是占位符」的文件读头部补名：已有真实标题的条目不读盘。 */
@@ -1223,4 +1241,17 @@ export function didSessionPreferencesChange(
 	patch: Pick<SessionCatalogEntry, "model" | "thinkingLevel">,
 ): boolean {
 	return !equalModel(entry.model, patch.model) || entry.thinkingLevel !== patch.thinkingLevel;
+}
+
+/**
+ * 会话排序：置顶会话排在最前面，非置顶会话按 updatedAt 降序排列
+ */
+export function sortSessionRecords(
+	a: { pinned?: boolean; updatedAt: number },
+	b: { pinned?: boolean; updatedAt: number }
+): number {
+	if ((a.pinned ?? false) !== (b.pinned ?? false)) {
+		return b.pinned ? 1 : -1;
+	}
+	return b.updatedAt - a.updatedAt;
 }

@@ -39,7 +39,8 @@ import { type SidebarActions } from "./components/sidebar/SidebarContent";
 import { AppSidebar } from "./components/sidebar/AppSidebar";
 import { ExtensionsPage } from "./components/pages/ExtensionsPage";
 import { SkillsPage } from "./components/pages/SkillsPage";
-import { ExpertsPage } from "./components/pages/ExpertsPage";
+import { AssistantPage } from "./components/pages/AssistantPage";
+import { ZhichengReviewPage } from "./components/pages/ZhichengReviewPage";
 import { AppBootstrap } from "./components/app/AppBootstrap";
 import { HydroBrandMark } from "./components/app/HydroBrandMark";
 import { ManagedAccessOverlay } from "./components/managed/ManagedAccessOverlay";
@@ -3166,8 +3167,8 @@ export function App() {
     />
   );
 
-  // 页面内容：当 activePage 为 extensions/skills/experts 时，替换主内容区
-  const isPageActive = activePage === "extensions" || activePage === "skills" || activePage === "experts";
+  // 页面内容：当 activePage 为 extensions/skills/assistant 时，替换主内容区
+  const isPageActive = activePage === "extensions" || activePage === "skills" || activePage?.startsWith("assistant");
 
   // ── DrawerSurface port objects (stable via useMemo) ──
   const drawerPorts = useDrawerPorts({
@@ -3276,7 +3277,8 @@ export function App() {
         <div key={activePage} className="flex h-full flex-col">
           {activePage === "extensions" && <ExtensionsPage onNavigate={onNavigate} />}
           {activePage === "skills" && <SkillsPage onNavigate={onNavigate} />}
-          {activePage === "experts" && <ExpertsPage onNavigate={onNavigate} />}
+          {activePage === "assistant" && <AssistantPage onNavigate={onNavigate} onModuleClick={(mod) => setActivePage("assistant:" + mod)} />}
+          {activePage === "assistant:zhicheng" && <ZhichengReviewPage onNavigate={() => setActivePage("assistant")} />}
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">{chatPaneContentNode}</div>

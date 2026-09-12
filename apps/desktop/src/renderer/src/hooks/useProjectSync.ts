@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import type { Project, FileTreeNode, GitBranchInfo, WorktreeEntry, SessionSummary, SessionRecord } from "../../../shared/types";
 import type { SessionLoadState } from "../atoms/session-atoms";
 import { sessionRecordToSummary } from "../atoms/session-selectors";
+import { pinnedFirstByUpdatedAt } from "../utils/sessionRecordIdentity";
 import { loadProjectFileTree } from "../utils/fileTreeLazy";
 
 const SESSION_REFRESH_TIMEOUT_MS = 20_000;
@@ -131,7 +132,7 @@ export function useProjectSync(input: UseProjectSyncInput) {
     return refreshed
       .map((session) => "projectId" in session ? sessionRecordToSummary(session) : session)
       .filter((session): session is SessionSummary => Boolean(session))
-      .sort((a, b) => b.updatedAt - a.updatedAt);
+      .sort(pinnedFirstByUpdatedAt);
   }
 
   async function runProjectSessionRefresh(
@@ -169,7 +170,7 @@ export function useProjectSync(input: UseProjectSyncInput) {
         const sorted = records
           .map(sessionRecordToSummary)
           .filter((session): session is SessionSummary => Boolean(session))
-          .sort((a, b) => b.updatedAt - a.updatedAt);
+          .sort(pinnedFirstByUpdatedAt);
         setVisibleProjectChildCountByProject((c) => ({ ...c, [projectId]: c[projectId] ?? SIDEBAR_PROJECT_CHILD_PAGE_SIZE }));
         result = sorted;
       }

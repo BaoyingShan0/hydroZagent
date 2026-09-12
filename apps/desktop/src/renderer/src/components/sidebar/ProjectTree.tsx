@@ -3,6 +3,7 @@ import type { DragEvent } from "react";
 import type { Project, WorktreeEntry } from "../../../../shared/types";
 import type { SidebarController } from "../../hooks/useSidebarController";
 import { t } from "../../i18n";
+import { showNotice } from "../../utils/notice";
 import type { SidebarActions } from "./SidebarContent";
 import { SessionTree } from "./SessionTree";
 import { WorktreeTree } from "./WorktreeTree";
@@ -206,6 +207,12 @@ export function ProjectTree(props: {
                 currentSessionId={props.currentSessionId}
                 controller={props.controller}
                 actions={props.actions}
+                dragOverSessionId={props.controller.drag.overSessionId}
+                onDropSession={(targetSessionId) => {
+                  // TODO: 实际拖拽排序逻辑（需要后端支持会话排序 API）
+                  props.controller.setSessionDropTarget(undefined);
+                  showNotice(t("app.dragSortComingSoon"), 2000);
+                }}
               />
             )}
           </div>
@@ -306,6 +313,11 @@ export function ProjectTree(props: {
           {!collapsed && (
             <div className="relative ml-3 space-y-0.5 pl-2">
               <SessionTree
+                dragOverSessionId={props.controller.drag.overSessionId}
+                onDropSession={(targetSessionId) => {
+                  props.controller.setSessionDropTarget(undefined);
+                  showNotice(t("app.dragSortComingSoon"), 2000);
+                }}
                 project={project}
                 sessions={sessions}
                 agents={props.controller.catalog.agents}

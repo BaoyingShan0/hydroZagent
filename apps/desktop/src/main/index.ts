@@ -300,6 +300,7 @@ import { registerPasteFilesIpc } from "./ipc/pasteFilesIpc";
 import { registerSecurityIpc } from "./ipc/securityIpc";
 import { registerVisionIpc } from "./ipc/visionIpc";
 import { registerImageGenIpc } from "./ipc/imagegenIpc";
+import { registerZhichengIpc } from "./ipc/zhichengIpc";
 import { ImageGenService } from "./imagegen/ImageGenService";
 import { ImageSessionStore } from "./imagegen/ImageSessionStore";
 import { ImageGenConfigStore } from "./imagegen/ImageGenConfigStore";
@@ -2986,6 +2987,10 @@ function registerIpc() {
 		openExternalUrl,
 	});
 	registerClipboardIpc({ appLogger });
+	registerZhichengIpc({
+		getMainWindow: () => mainWindow,
+		userDataDir: app.getPath("userData"),
+	});
 }
 
 function sendTelemetryHeartbeat() {

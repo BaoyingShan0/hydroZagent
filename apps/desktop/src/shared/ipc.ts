@@ -529,4 +529,13 @@ export const ipcChannels = {
 	clipboardWriteText: "clipboard:write-text",
 	clipboardWriteImage: "clipboard:write-image",
 
+	// ===== 职称评审审查 =====
+	zhichengCheckStatus: "zhicheng:check-status",
+	zhichengUploadCsv: "zhicheng:upload-csv",
+	zhichengDownload: "zhicheng:download",
+	zhichengReview: "zhicheng:review",
+	zhichengLedger: "zhicheng:ledger",
+	zhichengReset: "zhicheng:reset",
+	zhichengStatusChanged: "zhicheng:status-changed",
+
 } as const;

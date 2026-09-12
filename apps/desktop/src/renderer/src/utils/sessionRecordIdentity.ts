@@ -63,9 +63,23 @@ export function sameSessionRecord(a: SessionRecord, b: SessionRecord): boolean {
     a.codexParentThreadId === b.codexParentThreadId &&
     a.codexAgentRole === b.codexAgentRole &&
     a.codexAgentNickname === b.codexAgentNickname &&
+    a.pinned === b.pinned &&
     sameModel(a.model, b.model) &&
     sameTurnFeedback(a.turnFeedback, b.turnFeedback)
   );
+}
+
+/** 置顶优先排序：置顶项排在最前，组内按 updatedAt 降序。
+ *  与主进程 SessionCatalog.sortSessionRecords 同一语义，渲染层各列表共用，
+ *  避免某处按 updatedAt 重排后把主进程的置顶顺序打回原形。 */
+export function pinnedFirstByUpdatedAt<T extends { pinned?: boolean; updatedAt: number }>(
+	a: T,
+	b: T,
+): number {
+	const aPinned = a.pinned ? 1 : 0;
+	const bPinned = b.pinned ? 1 : 0;
+	if (aPinned !== bPinned) return bPinned - aPinned;
+	return b.updatedAt - a.updatedAt;
 }
 
 /**

@@ -5,6 +5,7 @@
 
 import { ipcMain, type BrowserWindow } from "electron";
 import { readFile, writeFile } from "node:fs/promises";
+import { isTransientFileError } from "../utils/fsRetry";
 import { ipcChannels } from "../../shared/ipc";
 import { isDshPermissionPreset } from "../../shared/types/agent";
 import { isSessionTurnFeedbackInput } from "../../shared/types/session";
@@ -27,6 +28,41 @@ import type {
 	SessionRecord,
 	SessionProcessEvent,
 } from "../../shared/types";
+
+/** 重试延迟序列（ms）：首次立即重试，随后 20/75/200ms 退避，总窗口约 300ms。 */
+const READ_WRITE_RETRY_DELAYS = [0, 20, 75, 200];
+
+/**
+ * 对文件读写的瞬态锁冲突做退避重试。
+ * Windows 上 Agent 正在运行时可能短暂锁定会话文件，通常几十毫秒级释放。
+ */
+async function readFileWithRetry(path: string, encoding: BufferEncoding): Promise<string> {
+	let lastError: unknown;
+	for (const delay of READ_WRITE_RETRY_DELAYS) {
+		if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+		try {
+			return await readFile(path, { encoding });
+		} catch (error) {
+			lastError = error;
+			if (!isTransientFileError(error)) throw error;
+		}
+	}
+	throw lastError;
+}
+
+async function writeFileWithRetry(path: string, data: string, encoding: BufferEncoding): Promise<void> {
+	let lastError: unknown;
+	for (const delay of READ_WRITE_RETRY_DELAYS) {
+		if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+		try {
+			return await writeFile(path, data, { encoding });
+		} catch (error) {
+			lastError = error;
+			if (!isTransientFileError(error)) throw error;
+		}
+	}
+	throw lastError;
+}
 import { parseSessionProcessEvents } from "../sessions/sessionProcessEvents";
 import { BackgroundScanCoordinator } from "../sessions/BackgroundScanCoordinator";
 
@@ -1689,25 +1725,59 @@ export function registerSessionIpc(deps: SessionIpcDeps): void {
 		ipcChannels.sessionsCatalogPin,
 		async (_event, sessionId: string, pinned: boolean) => {
 			const entry = sessionCatalog.get(sessionId);
-			if (!entry?.filePath) return false;
+			if (!entry) return false;
 			try {
-				const content = await readFile(entry.filePath, "utf-8");
+				if (!entry.filePath) {
+					// 草稿期无会话文件：仅更新 catalog 状态（持久化到 catalog.json）。
+					// 会话文件创建后扫描器会覆盖 pinned 字段，见 SessionCatalog.mergeScanned 中的保留逻辑。
+					// 置顶/取消置顶不改变会话最后活动时间，显式传回旧 updatedAt 避免打乱非置顶的 recency 排序。
+					await sessionCatalog.update(sessionId, { pinned, updatedAt: entry.updatedAt });
+					const window = getMainWindow();
+					if (window && !window.isDestroyed()) {
+						window.webContents.send(ipcChannels.sessionsCatalogRefreshed, { projectId: entry.projectId });
+					}
+					void appLogger.info("session", "Session pin toggled (draft)", {
+						sessionId,
+						pinned,
+					});
+					return true;
+				}
+				const content = await readFileWithRetry(entry.filePath, "utf-8");
 				const lines = content.split(/\r?\n/);
-				const marker = "{\"type\":\"session_pinned\",\"pinned\":true}";
-				const existingIdx = lines.findIndex((line) => line.startsWith(marker));
+				// 使用 JSON.parse 匹配而非 startsWith，避免 JSON 序列化格式差异导致匹配失败
+				const existingIdx = lines.findIndex((line) => {
+					if (!line.trim()) return false;
+					try {
+						const parsed = JSON.parse(line);
+						return (
+							parsed?.type === "session_pinned" &&
+							parsed?.pinned === true
+						);
+					} catch {
+						return false;
+					}
+				});
 				if (pinned && existingIdx === -1) {
-					// 置顶：在文件头部插入 marker
-					lines.unshift(marker);
+					// 置顶：在文件头部插入 marker（使用 JSON.stringify 保证格式一致）
+					lines.unshift(JSON.stringify({ type: "session_pinned", pinned: true }));
 				} else if (!pinned && existingIdx !== -1) {
 					// 取消置顶：删除已有的 marker 行
 					lines.splice(existingIdx, 1);
-				} else if (pinned && existingIdx !== -1) {
-					// 已经是置顶状态：无需操作
-					return true;
 				}
-				const next = lines.filter(Boolean).join("\n") + "\n";
+				// 注意：不能在这里提前 return true。目标状态已由 marker 满足时（例如草稿期置顶后
+				// 激活生成的会话文件里还没有 marker，此时取消置顶找不到行可删），仍必须更新 catalog，
+				// 否则 catalog 里的 pinned 会残留 true，界面始终显示置顶。
+				const next = lines.join("\n");
 				if (content !== next) {
-					await writeFile(entry.filePath, next, "utf-8");
+					await writeFileWithRetry(entry.filePath, next, "utf-8");
+				}
+				// 更新 catalog 状态（避免重启前状态不同步）。置顶/取消置顶不改会话最后活动时间，
+				// 显式传回旧 updatedAt，避免取消置顶后会话因 updatedAt 被顶到非置顶列表最前。
+				await sessionCatalog.update(sessionId, { pinned, updatedAt: entry.updatedAt });
+				// 通知渲染层刷新 catalog（使 pinned 状态立即可见）
+				const window = getMainWindow();
+				if (window && !window.isDestroyed()) {
+					window.webContents.send(ipcChannels.sessionsCatalogRefreshed, { projectId: entry.projectId });
 				}
 				void appLogger.info("session", "Session pin toggled", {
 					sessionId,

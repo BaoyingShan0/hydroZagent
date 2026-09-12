@@ -107,10 +107,13 @@ export type SidebarController = {
    * 切换到其他工作区时自动展开，避免「选中了却看不到会话」；
    * 再次点击当前工作区时切换折叠。
    */
-  drag: { sourceProjectId?: string; overProjectId?: string };
+  drag: { sourceProjectId?: string; overProjectId?: string; sourceSessionId?: string; overSessionId?: string };
   startProjectDrag: (projectId: string) => void;
   setProjectDropTarget: (projectId?: string) => void;
   finishProjectDrag: () => void;
+  startSessionDrag: (sessionId: string) => void;
+  setSessionDropTarget: (sessionId?: string) => void;
+  finishSessionDrag: () => void;
   menu: SidebarMenuTarget | null;
   openMenu: (target: SidebarMenuTarget) => Promise<void>;
   closeMenu: () => void;
@@ -226,7 +229,7 @@ export function useSidebarController(options: {
   const [sourceFilterMenu, setSourceFilterMenu] = useState<SidebarSourceFilterMenu>();
   const [expandedSubagentGroups, setExpandedSubagentGroups] = useState<Set<string>>(() => new Set());
   const [expandedWorktreePaths, setExpandedWorktreePaths] = useState<Set<string>>(() => new Set());
-  const [drag, setDrag] = useState<{ sourceProjectId?: string; overProjectId?: string }>({});
+  const [drag, setDrag] = useState<{ sourceProjectId?: string; overProjectId?: string; sourceSessionId?: string; overSessionId?: string }>({});
   const [menu, setMenu] = useState<SidebarMenuTarget | null>(null);
   const [agentRpcLogging, setAgentRpcLoggingById] = useState<Map<string, boolean>>(() => new Map());
   // RPC 日志开关（agentId 键，只增不清 → 关闭时删键；agentId 每次 spawn 随机，旧键无复用价值）
@@ -468,6 +471,9 @@ export function useSidebarController(options: {
     startProjectDrag: (projectId) => setDrag({ sourceProjectId: projectId }),
     setProjectDropTarget: (projectId) => setDrag((current) => ({ ...current, overProjectId: projectId })),
     finishProjectDrag: () => setDrag({}),
+    startSessionDrag: (sessionId) => setDrag((current) => ({ ...current, sourceSessionId: sessionId })),
+    setSessionDropTarget: (sessionId) => setDrag((current) => ({ ...current, overSessionId: sessionId })),
+    finishSessionDrag: () => setDrag({}),
     menu,
     openMenu,
     closeMenu: () => {

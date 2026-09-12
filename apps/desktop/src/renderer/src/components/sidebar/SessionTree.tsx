@@ -1,8 +1,9 @@
 import { Fragment, type ReactNode } from "react";
-import { ChevronDown, Ellipsis, HatGlasses, Image as ImageIcon, Trash2 } from "lucide-react";
+import { ChevronDown, Ellipsis, HatGlasses, Image as ImageIcon, Pin, Trash2 } from "lucide-react";
 import type { AgentTab, Project, SessionRecord, SessionSummary } from "../../../../shared/types";
 import { collectDisplayedSessionIds, filterAgentsForSidebarDisplay, getProjectAgentSessionDisplay, sessionStatusDotClass, type ProjectChildItem } from "../../agentListDisplay";
 import { sessionRecordToSummary } from "../../atoms";
+import { pinnedFirstByUpdatedAt } from "../../utils/sessionRecordIdentity";
 import { t } from "../../i18n";
 import { filterSidebarSessions, getBoundSidebarRuntimeAgent, type SidebarController } from "../../hooks/useSidebarController";
 import { Button } from "../ui-shadcn/button";
@@ -93,6 +94,8 @@ export function SessionTree(props: {
   nested?: boolean;
   visibleChildCount?: number;
   onShowMore?: () => void;
+  dragOverSessionId?: string;
+  onDropSession?: (targetSessionId: string) => void;
 }) {
   const filter = props.controller.sourceFilterFor(props.project.id);
   const search = props.controller.search.trim();
@@ -128,11 +131,7 @@ export function SessionTree(props: {
     .filter((session) => !displayedSessionIds.has(session.id))
     .filter((session) => matchesSearch(session.title, search))
     .filter((session) => filter === null || filter.has(session.source))
-    .sort((left, right) => {
-      const pinnedDelta = (right.pinned ? 1 : 0) - (left.pinned ? 1 : 0);
-      if (pinnedDelta !== 0) return pinnedDelta;
-      return right.updatedAt - left.updatedAt;
-    });
+    .sort(pinnedFirstByUpdatedAt);
   const catalogLoading = props.controller.catalog.catalogLoadStateByProject[props.project.id]?.status === "loading";
   const hasRows = catalogLoading || draftSessions.length > 0 || display.visibleChildren.length > 0 || display.hiddenChildCount > 0;
   if (!hasRows) return null;
@@ -148,12 +147,13 @@ export function SessionTree(props: {
     onDragStart: (event: React.DragEvent) => {
       event.dataTransfer.effectAllowed = "move";
       event.dataTransfer.setData(SESSION_TAB_DRAG_MIME, sessionId);
-      // 部分浏览器要求有 text/plain 才能跨区域 drop
       event.dataTransfer.setData("text/plain", sessionId);
       props.actions.sessions.beginDrag?.(sessionId);
+      props.controller.startSessionDrag(sessionId);
     },
     onDragEnd: () => {
       props.actions.sessions.endDrag?.();
+      props.controller.finishSessionDrag();
     },
   });
 
@@ -263,6 +263,18 @@ export function SessionTree(props: {
         <div
           className={rowContainerClass}
           onContextMenu={(event) => { event.preventDefault(); void props.controller.openMenu({ kind: "agent", agentId: child.agent.id, x: event.clientX, y: event.clientY }); }}
+          onDragOver={(event) => {
+            if (agentSession && props.controller.drag.sourceSessionId && props.controller.drag.sourceSessionId !== agentSession.id) {
+              event.preventDefault();
+              props.controller.setSessionDropTarget(agentSession.id);
+            }
+          }}
+          onDragLeave={() => props.controller.setSessionDropTarget(undefined)}
+          onDrop={(event) => {
+            event.preventDefault();
+            props.controller.finishSessionDrag();
+            if (agentSession) props.onDropSession?.(agentSession.id);
+          }}
         >
           <PathTooltip content={child.agent.title}>
             <button
@@ -270,6 +282,7 @@ export function SessionTree(props: {
               className={cn(
                 sessionRowClass,
                 agentSession?.id === props.currentSessionId && selectedRowClass,
+                props.controller.drag.sourceSessionId && props.controller.drag.overSessionId === agentSession?.id && "ring-1 ring-accent bg-accent/10",
               )}
               onClick={() => { if (agentSession) openSession(agentSession.id); }}
               onDoubleClick={() => { if (agentSession) openSession(agentSession.id, "permanent"); }}
@@ -312,6 +325,18 @@ export function SessionTree(props: {
       <div
         className={rowContainerClass}
         onContextMenu={(event) => openContext(event, child.session)}
+        onDragOver={(event) => {
+          if (props.controller.drag.sourceSessionId && props.controller.drag.sourceSessionId !== child.session.id) {
+            event.preventDefault();
+            props.controller.setSessionDropTarget(child.session.id);
+          }
+        }}
+        onDragLeave={() => props.controller.setSessionDropTarget(undefined)}
+        onDrop={(event) => {
+          event.preventDefault();
+          props.controller.finishSessionDrag();
+          props.onDropSession?.(child.session.id);
+        }}
       >
         <PathTooltip content={child.session.filePath
           ? `${child.session.name || t("common.untitled")}\n${child.session.filePath}`
@@ -324,6 +349,8 @@ export function SessionTree(props: {
               // 历史会话需要比运行中 Agent 更松的点击区域和行间距，避免连续记录挤成一块。
               "session-row history-session-row mx-0 min-h-7 pl-2 pr-2 py-0",
               child.session.id === props.currentSessionId && selectedRowClass,
+              props.controller.drag.sourceSessionId && props.controller.drag.overSessionId === child.session.id && "ring-1 ring-accent bg-accent/10",
+              props.controller.drag.sourceSessionId && props.controller.drag.sourceSessionId !== child.session.id && "hover:bg-muted/80",
             )}
             onClick={() => openSession(child.session.id)}
             onDoubleClick={() => openSession(child.session.id, "permanent")}
@@ -333,6 +360,8 @@ export function SessionTree(props: {
           <div className="conversation-body min-w-0 flex-1 transition-[padding-right] group-hover/row:pr-7 group-focus-within/row:pr-7"><div className="conversation-title flex min-w-0 items-center gap-1.5">
             {/* 历史会话（无运行态）文字降一级，与活跃 Agent/运行中会话形成层级差 */}
             <strong className={cn("min-w-0 flex-1 truncate", runtime ? "font-normal" : "font-normal text-muted-foreground/90")}>{child.session.name || t("common.untitled")}</strong>
+            {/* 置顶会话的图钉标识：让「已置顶」状态可被直接看见，而不只是顺序变化 */}
+            {child.session.pinned && <Pin className="size-3 shrink-0 text-foreground/70" aria-hidden="true" />}
             {(child.session.backend === "dsh" || child.session.backend === "imagegen") && <SessionBackendMark backend={child.session.backend} />}
             {/* 生图角标：imagegen 后端会话的徽标已含生图标识，此处仅对遗留 pi 后端含生图消息的会话补图标 */}
             {child.session.backend !== "imagegen" && child.session.hasImageGen && (
@@ -392,6 +421,7 @@ export function SessionTree(props: {
               <div className="conversation-body min-w-0 flex-1 transition-[padding-right] group-hover/row:pr-7 group-focus-within/row:pr-7"><div className="conversation-title flex min-w-0 items-center gap-1.5">
                 {renderRuntimeStatusDot(runtime?.status)}
                 <strong className="min-w-0 flex-1 truncate font-normal">{session.title}</strong>
+                {session.pinned && <Pin className="size-3 shrink-0 text-foreground/70" aria-hidden="true" />}
                 <SessionBackendMark backend={session.backend} />
               </div></div>
             </button>

@@ -1,9 +1,30 @@
 import { Button } from "../components/ui-shadcn/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui-shadcn/table";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "../components/ui-shadcn/select";
+import { Input } from "../components/ui-shadcn/input";
+import { Textarea } from "../components/ui-shadcn/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui-shadcn/select";
 import { Tabs, TabsList, TabsTrigger } from "../components/ui-shadcn/tabs";
-import { useState } from "react";
-import { Check, FileEdit, Pencil, ShoppingBag, Sparkles, ToggleLeft, ToggleRight, Trash2, X, Store, Globe } from "lucide-react";
+import { Label } from "../components/ui-shadcn/label";
+import { useState, useMemo } from "react";
+import {
+	Sparkles,
+	Check,
+	X,
+	Plus,
+	ToggleRight,
+	ToggleLeft,
+	FileEdit,
+	Trash2,
+	Search,
+	Globe,
+	Store,
+	ShoppingBag,
+	ChevronDown,
+	ChevronUp,
+	Code2,
+	Copy,
+	ExternalLink,
+	ShieldCheck,
+} from "lucide-react";
 import type {
 	CreatePiSkillInput,
 	PiSkillListResult,
@@ -13,9 +34,316 @@ import type {
 import { t } from "../i18n";
 import { SkillStoreTab } from "./SkillStoreTab";
 import { SkillHubStorePanel } from "./SkillHubStorePanel";
-import { Input } from "../components/ui-shadcn/input";
-import { Textarea } from "../components/ui-shadcn/textarea";
-import { Label } from "../components/ui-shadcn/label";
+import { cn } from "../lib/utils";
+
+// ── Skill Card Component ─────────────────────────────────────────────
+
+function SkillCard({
+	skill,
+	onToggle,
+	onDelete,
+	onEdit,
+	onRename,
+}: {
+	skill: PiSkillSummary;
+	onToggle: (skill: PiSkillSummary, enabled: boolean) => void;
+	onDelete: (skill: PiSkillSummary) => void;
+	onEdit: (skill: PiSkillSummary) => void;
+	onRename: (skill: PiSkillSummary, newName: string) => Promise<void>;
+}) {
+	const [renaming, setRenaming] = useState(false);
+	const [renameValue, setRenameValue] = useState(skill.name);
+	const [renameBusy, setRenameBusy] = useState(false);
+
+	const handleRename = async () => {
+		if (renameBusy || !renameValue.trim() || renameValue.trim() === skill.name) {
+			setRenaming(false);
+			return;
+		}
+		setRenameBusy(true);
+		try {
+			await onRename(skill, renameValue.trim());
+			setRenaming(false);
+		} finally {
+			setRenameBusy(false);
+		}
+	};
+
+	return (
+		<div
+			className={cn(
+				"skill-card group relative rounded-xl border border-border-subtle bg-card transition-all duration-300 ease-in-out overflow-hidden",
+				skill.enabled ? "shadow-sm" : "opacity-75",
+				// 折叠态：显示名称+状态；hover/点击时展开显示详情
+				"max-h-[48px] hover:max-h-[520px] p-3 hover:p-4 cursor-pointer hover:border-border hover:shadow-md"
+			)}
+		>
+			{/* Header: name + status + toggle — 始终可见 */}
+			<div className="flex items-start justify-between gap-2">
+				<div className="min-w-0 flex-1">
+					{renaming ? (
+						<div className="flex items-center gap-1">
+							<Input
+								value={renameValue}
+								onChange={(e) => setRenameValue(e.target.value)}
+								onKeyDown={(e) => { if (e.key === "Enter") void handleRename(); if (e.key === "Escape") setRenaming(false); }}
+								autoFocus
+								disabled={renameBusy}
+								className="h-7 text-sm font-medium"
+							/>
+							<Button variant="ghost" size="icon-xs" className="size-6" onClick={handleRename} disabled={renameBusy}>
+								<Check size={12} strokeWidth={2.5} />
+							</Button>
+							<Button variant="ghost" size="icon-xs" className="size-6" onClick={() => setRenaming(false)} disabled={renameBusy}>
+								<X size={12} strokeWidth={2.5} />
+							</Button>
+						</div>
+					) : (
+						<div className="flex items-center gap-2">
+							<Sparkles size={14} className="shrink-0 text-accent" />
+							<strong
+								className="truncate text-sm font-medium text-foreground"
+								onDoubleClick={(e) => { e.stopPropagation(); setRenaming(true); setRenameValue(skill.name); }}
+								title={t("common.rename")}
+							>
+								{skill.name}
+							</strong>
+						</div>
+					)}
+				</div>
+				{/* Status badge + toggle */}
+				<div className="flex shrink-0 items-center gap-1.5">
+					<span className={cn(
+						"skill-badge px-2 py-0.5 rounded-full text-[11px] font-medium",
+						skill.enabled ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"
+					)}>
+						{skill.enabled ? t("common.enabled") : t("common.disabled")}
+					</span>
+					<Button
+						variant="ghost"
+						size="icon-xs"
+						className="size-6 hover:bg-accent/10 hover:text-accent transition-colors"
+						onClick={(e) => { e.stopPropagation(); onToggle(skill, !skill.enabled); }}
+						title={skill.enabled ? t("common.disable") : t("common.enabled")}
+					>
+						{skill.enabled ? <ToggleRight size={14} strokeWidth={2} /> : <ToggleLeft size={14} strokeWidth={2} />}
+					</Button>
+				</div>
+			</div>
+
+			{/* Expandable content — hover 时显示 */}
+			<div className="skill-card-expandable mt-0 overflow-hidden">
+				{/* Description */}
+				<p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+					{skill.description || t("config.skillDescriptionMissing")}
+				</p>
+
+				{/* Path */}
+				{skill.sourceLabel && (
+					<div className="mt-2 flex items-center gap-1.5 text-[11px] font-mono text-muted-foreground/70">
+						<Code2 size={10} className="shrink-0" />
+						<span className="truncate">{skill.sourceLabel}</span>
+					</div>
+				)}
+
+				{/* Warnings */}
+				{skill.warnings.length > 0 && (
+					<div className="mt-2 flex flex-col gap-1">
+						{skill.warnings.map((warning) => (
+							<span key={warning} className="truncate text-[11px] text-destructive flex items-center gap-1">
+								<ShieldCheck size={10} className="shrink-0" />
+								{warning}
+							</span>
+						))}
+					</div>
+				)}
+
+				{/* Invalid warning */}
+				{!skill.valid && (
+					<span className="mt-2 inline-block text-[11px] text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
+						{t("config.needsFix")}
+					</span>
+				)}
+
+				{/* Actions bar */}
+				<div className="mt-3 flex items-center justify-between border-t border-border-subtle pt-3">
+					<span className="text-[10px] text-muted-foreground truncate max-w-[60%] font-mono" title={skill.path}>
+						{skill.path}
+					</span>
+					<div className="flex shrink-0 items-center gap-0.5">
+						<Button
+							variant="ghost"
+							size="icon-xs"
+							className="size-7 hover:bg-accent/10 hover:text-accent"
+							onClick={(e) => { e.stopPropagation(); onEdit(skill); }}
+							title={t("common.edit")}
+						>
+							<FileEdit size={12} strokeWidth={2} />
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon-xs"
+							className="size-7 hover:bg-destructive/10 hover:text-destructive"
+							onClick={(e) => { e.stopPropagation(); onDelete(skill); }}
+							title={t("common.delete")}
+						>
+							<Trash2 size={12} strokeWidth={2} />
+						</Button>
+					</div>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+// ── Create Skill Inline Form ─────────────────────────────────────────
+
+function CreateSkillForm({
+	creating,
+	newName,
+	newDescription,
+	newLocationId,
+	data,
+	expanded,
+	onToggleExpanded,
+	onChangeNewName,
+	onChangeNewDescription,
+	onChangeNewLocation,
+	onCreate,
+}: {
+	creating: boolean;
+	newName: string;
+	newDescription: string;
+	newLocationId: PiSkillLocation["id"];
+	data: PiSkillListResult;
+	expanded: boolean;
+	onToggleExpanded: () => void;
+	onChangeNewName: (value: string) => void;
+	onChangeNewDescription: (value: string) => void;
+	onChangeNewLocation: (value: PiSkillLocation["id"]) => void;
+	onCreate: () => void;
+}) {
+	const selectedLocation =
+		data.locations.find((location) => location.id === newLocationId) ??
+		data.locations[0];
+	const canCreate = newName.trim() && newDescription.trim();
+
+	if (!data.locations.length) return null;
+
+	return (
+		<div className="skill-create-section mb-6">
+			{/* Toggle button */}
+			<button
+				type="button"
+				onClick={onToggleExpanded}
+				className="flex w-full items-center gap-2 rounded-xl border border-dashed border-border-subtle bg-card/50 px-4 py-3 text-left text-sm text-muted-foreground hover:border-accent/50 hover:text-accent transition-all duration-200"
+			>
+				{expanded ? <ChevronDown size={16} /> : <Plus size={16} />}
+				<span className="font-medium">{t("config.createSkill")}</span>
+			</button>
+
+			{/* Expandable form */}
+			<div className={cn(
+				"skill-create-form overflow-hidden transition-all duration-300 ease-in-out",
+				expanded ? "max-h-[500px] opacity-100 mt-3" : "max-h-0 opacity-0"
+			)}>
+				<div className="rounded-xl border border-border-subtle bg-card p-4 space-y-4">
+					{/* Name + Location row */}
+					<div className="grid grid-cols-[1fr_200px] gap-3">
+						<div className="space-y-1.5">
+							<Label className="text-xs font-medium text-foreground">{t("config.name")}</Label>
+							<Input
+								value={newName}
+								placeholder={t("config.skillNamePlaceholder")}
+								onChange={(event) => onChangeNewName(event.target.value)}
+								className="h-9 text-sm"
+							/>
+						</div>
+						<div className="space-y-1.5">
+							<Label className="text-xs font-medium text-foreground">{t("config.location")}</Label>
+							<Select
+								value={newLocationId}
+								onValueChange={(v) => {
+									if (v === "pi-global" || v === "agents-global" || v === "project-pi" || v === "project-agents") {
+										onChangeNewLocation(v);
+									}
+								}}
+							>
+								<SelectTrigger className="h-9 text-xs">
+									<SelectValue placeholder={t("config.chooseFolder")} />
+								</SelectTrigger>
+								<SelectContent>
+									{data.locations.map((location) => (
+										<SelectItem key={location.id} value={location.id}>
+											{location.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+					</div>
+
+					{/* Description */}
+					<div className="space-y-1.5">
+						<Label className="text-xs font-medium text-foreground">{t("config.description")}</Label>
+						<Textarea
+							value={newDescription}
+							placeholder={t("config.skillUseWhenPlaceholder")}
+							onChange={(event) => onChangeNewDescription(event.target.value)}
+							className="min-h-[64px] resize-y text-xs"
+						/>
+					</div>
+
+					{/* Submit */}
+					<div className="flex justify-end">
+						<Button
+							size="sm"
+							className="gap-1.5 h-8"
+							onClick={onCreate}
+							disabled={!canCreate || creating}
+						>
+							{creating ? (
+								<>
+									<span className="size-3.5 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" />
+									{t("config.creatingSkill")}
+								</>
+							) : (
+								<>
+									<Plus size={14} />
+									{t("config.addSkill")}
+								</>
+							)}
+						</Button>
+					</div>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+// ── Empty State ──────────────────────────────────────────────────────
+
+function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
+	return (
+		<div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+			<div className="flex size-20 items-center justify-center rounded-2xl bg-accent/5 border border-accent/10">
+				<Sparkles size={32} className="text-accent" />
+			</div>
+			<div className="space-y-1.5">
+				<h3 className="text-base font-semibold text-foreground">{t("config.emptySkills")}</h3>
+				<p className="text-xs text-muted-foreground max-w-xs">
+					{t("skills.pageDescription")}
+				</p>
+			</div>
+			<Button size="sm" className="gap-1.5" onClick={onCreateClick}>
+				<Plus size={14} />
+				{t("config.addSkill")}
+			</Button>
+		</div>
+	);
+}
+
+// ── Main Skills Tab ──────────────────────────────────────────────────
 
 export function SkillsTab(props: {
 	data: PiSkillListResult;
@@ -36,55 +364,80 @@ export function SkillsTab(props: {
 	onRename: (skill: PiSkillSummary, newName: string) => Promise<void>;
 }) {
 	const { data } = props;
-	// 一级 tab：本地 / 商店
 	const [skillTab, setSkillTab] = useState<"local" | "store">("local");
-	// 二级 tab（商店内）：选择供应商
 	const [storeSource, setStoreSource] = useState<"promptchat" | "skillhub">("skillhub");
-	const canCreate = props.newName.trim() && props.newDescription.trim();
-	// 按选中的位置目录过滤 skill 列表
-	// 新建技能的位置只影响保存目标，不应把其他目录已有的技能从列表中隐藏。
-	const visibleSkills = data.skills;
-	const selectedLocation =
-		data.locations.find((location) => location.id === props.newLocationId) ??
-		data.locations[0];
-	return (
-		<div className="skills-tab">
-		{/* 一级 tab：本地 / 商店（shadcn Tabs） */}
-		<Tabs
-			value={skillTab}
-			onValueChange={(v) => { if (v === "local" || v === "store") setSkillTab(v); }}
-			className="gap-0"
-		>
-			<TabsList className="w-full">
-				<TabsTrigger value="local" onClick={() => props.onRefresh()}>
-					{t("config.nav.skills")}
-				</TabsTrigger>
-				<TabsTrigger value="store">
-					<ShoppingBag size={14} strokeWidth={1.8} />
-					{t("config.promptStoreTab")}
-				</TabsTrigger>
-			</TabsList>
-		</Tabs>
+	const [searchQuery, setSearchQuery] = useState("");
+	// 新建表单展开状态提到这里：空状态的「创建 Skill」按钮也靠它展开表单
+	const [createFormExpanded, setCreateFormExpanded] = useState(false);
 
-			{skillTab === "store" ? (
-				<div className="skills-store-content">
-					{/* 二级 tab：供应商切换（shadcn Tabs，紧凑变体） */}
+	// 按搜索过滤技能
+	const filteredSkills = useMemo(() => {
+		if (!searchQuery.trim()) return data.skills;
+		const q = searchQuery.toLowerCase();
+		return data.skills.filter(
+			(s) =>
+				s.name.toLowerCase().includes(q) ||
+				s.description.toLowerCase().includes(q) ||
+				s.path.toLowerCase().includes(q)
+		);
+	}, [data.skills, searchQuery]);
+
+	// 分离 enabled / disabled
+	const enabledSkills = filteredSkills.filter((s) => s.enabled);
+	const disabledSkills = filteredSkills.filter((s) => !s.enabled);
+
+	return (
+		<div className="skills-tab-v2">
+			{/* 一级 tab：本地 / 商店 */}
+			<div className="skills-tab-header mb-4">
+				<div className="flex items-center justify-between">
 					<Tabs
-						value={storeSource}
-						onValueChange={(v) => { if (v === "skillhub" || v === "promptchat") setStoreSource(v); }}
-						className="gap-0"
+						value={skillTab}
+						onValueChange={(v) => { if (v === "local" || v === "store") setSkillTab(v); }}
+						className=""
 					>
-						<TabsList className="w-full">
-							<TabsTrigger value="skillhub" className="px-3 py-1 text-xs">
-								<Store size={14} strokeWidth={1.8} />
-								{t("config.tabs.skillHub")}
+						<TabsList className="h-9 rounded-lg">
+							<TabsTrigger
+								value="local"
+								onClick={() => props.onRefresh()}
+								className="rounded-md px-3 py-1.5 text-xs data-[state=active]:bg-accent data-[state=active]:text-accent-foreground"
+							>
+								{t("config.nav.skills")}
 							</TabsTrigger>
-							<TabsTrigger value="promptchat" className="px-3 py-1 text-xs">
-								<Globe size={14} strokeWidth={1.8} />
-								Prompt.chat
+							<TabsTrigger
+								value="store"
+								className="rounded-md px-3 py-1.5 text-xs data-[state=active]:bg-accent data-[state=active]:text-accent-foreground"
+							>
+								<ShoppingBag size={13} strokeWidth={1.8} className="mr-1" />
+								{t("config.promptStoreTab")}
 							</TabsTrigger>
 						</TabsList>
 					</Tabs>
+
+					{/* Store 二级 tab */}
+					{skillTab === "store" && (
+						<Tabs
+							value={storeSource}
+							onValueChange={(v) => { if (v === "skillhub" || v === "promptchat") setStoreSource(v); }}
+							className="hidden sm:block"
+						>
+							<TabsList className="h-7 rounded-md bg-muted/50">
+								<TabsTrigger value="skillhub" className="px-2.5 py-1 text-[11px] rounded-sm">
+									<Store size={12} strokeWidth={1.8} className="mr-1" />
+									{t("config.tabs.skillHub")}
+								</TabsTrigger>
+								<TabsTrigger value="promptchat" className="px-2.5 py-1 text-[11px] rounded-sm">
+									<Globe size={12} strokeWidth={1.8} className="mr-1" />
+									Prompt.chat
+								</TabsTrigger>
+							</TabsList>
+						</Tabs>
+					)}
+				</div>
+			</div>
+
+			{skillTab === "store" ? (
+				<div className="skills-store-content">
 					{storeSource === "skillhub" ? (
 						<SkillHubStorePanel />
 					) : (
@@ -96,227 +449,142 @@ export function SkillsTab(props: {
 				</div>
 			) : (
 				<>
-					<div className="mb-3 flex items-center justify-between gap-3">
-				<div>
-					<span className="font-mono text-xs tabular-nums text-text-tertiary">
-						{t("config.count.skills", { count: visibleSkills.length })}
-					</span>
-					<small className="skills-restart-hint">
-						{t("config.restartHint")}
-					</small>
-				</div>
-				<div className="skills-toolbar-actions flex items-center gap-1.5">
-					{/* 与扩展页/设置页统一为 sm 控件高度 */}
-					<Button variant="outline" size="sm" onClick={props.onRefresh} disabled={props.loading}>
-						{t("common.refresh")}
-					</Button>
-					<Button variant="secondary" size="sm" onClick={props.onOpenRoot}>
-						{t("config.openFolder")}
-					</Button>
-				</div>
-			</div>
-
-			<section className="config-create-card">
-				<strong>{t("config.createSkill")}</strong>
-				<div className="config-create-grid">
-					<Label className="config-create-label">
-						<span>{t("config.name")}</span>
-						<Input
-							value={props.newName}
-							placeholder={t("config.skillNamePlaceholder")}
-							onChange={(event) => props.onChangeNewName(event.target.value)}
-						/>
-					</Label>
-					<Label className="config-create-label">
-						<span>{t("config.location")}</span>
-						<Select
-							value={props.newLocationId}
-							onValueChange={(v) => {
-								// 只接受已知位置 id，避免外部字符串注入；仅改变保存目标，不立即创建文件。
-								if (v === "pi-global" || v === "agents-global" || v === "project-pi" || v === "project-agents") {
-									props.onChangeNewLocation(v);
-								}
-							}}
-						>
-							{/* 只显示相对路径（label 形如 ~/.pi/agent/skills）：绝对路径长且无增益，
-								窄列会溢出框边界；单行 + truncate 超长省略。 */}
-							<SelectTrigger className="w-full">
-								<span className="min-w-0 flex-1 truncate text-left">
-									{selectedLocation?.label ?? t("config.chooseFolder")}
+					{/* 工具栏 */}
+					<div className="skills-toolbar mb-4 flex flex-wrap items-center justify-between gap-3">
+						{/* 左侧：计数 + 提示 */}
+						<div className="flex flex-col gap-0.5">
+							<div className="flex items-center gap-2">
+								<span className="font-mono text-xs tabular-nums text-muted-foreground">
+									{t("config.count.skills", { count: data.skills.length })}
 								</span>
-							</SelectTrigger>
-							<SelectContent>
-								{data.locations.map((location) => (
-									<SelectItem key={location.id} value={location.id}>
-										<span className="min-w-0 flex-1 truncate text-left">{location.label}</span>
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</Label>
-				</div>
-				<Label className="config-create-label">
-					<span>{t("config.description")}</span>
-					<Textarea
-						value={props.newDescription}
-						placeholder={t("config.skillUseWhenPlaceholder")}
-						onChange={(event) => props.onChangeNewDescription(event.target.value)}
-						className="min-h-[72px] resize-y"
-					/>
-				</Label>
-				<Button size="sm" variant="default"
-					className="justify-self-start"
-					onClick={props.onCreate}
-					disabled={!canCreate || props.creating}
-				>
-					{props.creating ? t("config.creatingSkill") : t("config.addSkill")}
-				</Button>
-			</section>
-
-			<div className="overflow-x-auto rounded-lg border border-border-subtle bg-bg-panel">
-				{visibleSkills.length === 0 ? (
-					<div className="py-12 text-center text-control text-text-tertiary">{t("config.emptySkills")}</div>
-				) : (
-					<Table className="table-fixed">
-						<TableHeader>
-							<TableRow>
-								<TableHead className="w-56">{t("config.name")}</TableHead>
-								{/* 描述列固定 40% 占比：table-fixed 忽略 min-width，窗口拉小时
-								    无 width 的列会被压到接近 0（描述竖条）；给百分比宽度后
-								    各列按比例压缩，描述列任何窗口下都保持可读宽度 */}
-								<TableHead className="w-2/5">{t("config.description")}</TableHead>
-								<TableHead className="w-44">{t("config.extensionPath")}</TableHead>
-								<TableHead className="w-36 text-right">{t("config.actions")}</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{visibleSkills.map((skill) => (
-								<SkillTableRow
-									key={skill.id}
-									skill={skill}
-									onToggle={props.onToggle}
-									onDelete={props.onDelete}
-									onEdit={props.onEdit}
-									onRename={props.onRename}
-								/>
-							))}
-						</TableBody>
-					</Table>
-				)}
-			</div>
-		</>
-			)}
-		</div>
-	);
-}
-
-function SkillTableRow(props: {
-	skill: PiSkillSummary;
-	onToggle: (skill: PiSkillSummary, enabled: boolean) => void;
-	onDelete: (skill: PiSkillSummary) => void;
-	onEdit: (skill: PiSkillSummary) => void;
-	onRename: (skill: PiSkillSummary, newName: string) => Promise<void>;
-}) {
-	const { skill } = props;
-	const [renaming, setRenaming] = useState(false);
-	const [renameValue, setRenameValue] = useState(skill.name);
-	const [renameBusy, setRenameBusy] = useState(false);
-
-	const handleRename = async () => {
-		if (renameBusy || !renameValue.trim() || renameValue.trim() === skill.name) {
-			setRenaming(false);
-			return;
-		}
-		setRenameBusy(true);
-		try {
-			await props.onRename(skill, renameValue.trim());
-			setRenaming(false);
-		} finally {
-			setRenameBusy(false);
-		}
-	};
-
-	return (
-		<TableRow>
-			<TableCell className="min-w-0">
-				{renaming ? (
-					<div className="flex items-center gap-1">
-						<Input
-							value={renameValue}
-							onChange={(e) => setRenameValue(e.target.value)}
-							onKeyDown={(e) => { if (e.key === "Enter") void handleRename(); if (e.key === "Escape") setRenaming(false); }}
-							autoFocus
-							disabled={renameBusy}
-						/>
-						<Button variant="ghost" size="icon-sm" className="size-7" onClick={handleRename} disabled={renameBusy} title={t("common.confirm")}>
-							<Check size={14} strokeWidth={2} />
-						</Button>
-						<Button variant="ghost" size="icon-sm" className="size-7" onClick={() => setRenaming(false)} disabled={renameBusy} title={t("common.cancel")}>
-							<X size={14} strokeWidth={2} />
-						</Button>
-					</div>
-				) : (
-					<div className="flex min-w-0 flex-col gap-0.5">
-						<div className="flex min-w-0 items-center gap-2">
-							<Sparkles size={14} strokeWidth={1.8} className="shrink-0 text-text-tertiary" />
-							<strong className="truncate text-control font-medium text-foreground">{skill.name}</strong>
-							<div className="skill-badges">
-								<span className={`skill-state ${skill.enabled ? "enabled" : "disabled"}`}>
-									{skill.enabled ? t("common.enabled") : t("common.disabled")}
+								<span className="text-[10px] text-muted-foreground/70 hidden sm:inline">
+									· {t("config.restartHint")}
 								</span>
-								{!skill.valid && <span className="skill-state invalid">{t("config.needsFix")}</span>}
 							</div>
 						</div>
-						<span className="truncate font-mono text-caption text-muted-foreground">{skill.sourceLabel}</span>
-						{skill.warnings.length > 0 && (
-							<div className="flex flex-col gap-0.5">
-								{skill.warnings.map((warning) => (
-									<span key={warning} className="truncate text-caption text-destructive">{warning}</span>
-								))}
+
+						{/* 右侧：操作按钮 */}
+						<div className="flex items-center gap-2">
+							{/* 搜索框 */}
+							<div className="relative">
+								<Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+								<Input
+									value={searchQuery}
+									onChange={(e) => setSearchQuery(e.target.value)}
+									placeholder={t("app.skillPickerSearchPlaceholder")}
+									className="h-8 w-48 bg-card pl-8 text-xs"
+								/>
+								{searchQuery && (
+									<Button
+										variant="ghost"
+										size="icon-xs"
+										className="absolute right-1 top-1/2 -translate-y-1/2 size-5"
+										onClick={() => setSearchQuery("")}
+									>
+										<X size={10} />
+									</Button>
+								)}
 							</div>
-						)}
+
+							<Button
+								variant="outline"
+								size="sm"
+								className="h-8 gap-1 text-xs"
+								onClick={props.onRefresh}
+								disabled={props.loading}
+							>
+								{t("common.refresh")}
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								className="h-8 gap-1 text-xs"
+								onClick={props.onOpenRoot}
+							>
+								<ExternalLink size={12} />
+								{t("config.openFolder")}
+							</Button>
+						</div>
 					</div>
-				)}
-			</TableCell>
-			{/* 描述太长时截断为 3 行（title 悬浮可看全文），避免长描述把整行撑得
-			    很高；描述列 w-2/5 占比 + 3 行截断，窗口拉小也不挤压成竖条。
-			    line-clamp 会改 display 为 -webkit-box，必须包一层 span 而不能直接放 td 上。 */}
-			<TableCell className="w-2/5 whitespace-normal break-words text-caption leading-relaxed text-muted-foreground" title={skill.description}>
-				<span className="block line-clamp-3">{skill.description || t("config.skillDescriptionMissing")}</span>
-			</TableCell>
-			<TableCell className="truncate font-mono text-caption text-muted-foreground" title={skill.path}>
-				{skill.path}
-			</TableCell>
-			<TableCell className="text-right">
-				<div className="flex justify-end gap-1">
-					<Button variant="ghost" size="icon-sm" className="size-7"
-						onClick={() => props.onToggle(skill, !skill.enabled)}
-						title={skill.enabled ? t("common.disable") : t("common.enabled")}
-						style={skill.enabled ? { color: "var(--color-accent)" } : undefined}
-					>
-						{skill.enabled ? <ToggleRight size={18} strokeWidth={1.8} /> : <ToggleLeft size={18} strokeWidth={1.8} />}
-					</Button>
-					<Button variant="ghost" size="icon-sm" className="size-7"
-						onClick={() => props.onEdit(skill)}
-						title={t("common.edit")}
-					>
-						<Pencil size={14} strokeWidth={1.8} />
-					</Button>
-					<Button variant="ghost" size="icon-sm" className="size-7"
-						onClick={() => { setRenaming(true); setRenameValue(skill.name); }}
-						title={t("common.rename")}
-					>
-						<FileEdit size={14} strokeWidth={1.8} />
-					</Button>
-					<Button variant="ghost" size="icon-sm" className="size-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
-						onClick={() => props.onDelete(skill)}
-						title={t("common.delete")}
-					>
-						<Trash2 size={14} strokeWidth={1.8} />
-					</Button>
-				</div>
-			</TableCell>
-		</TableRow>
+
+					{/* 新建表单 */}
+					<CreateSkillForm
+						creating={props.creating}
+						newName={props.newName}
+						newDescription={props.newDescription}
+						newLocationId={props.newLocationId}
+						data={data}
+						expanded={createFormExpanded}
+						onToggleExpanded={() => setCreateFormExpanded((value) => !value)}
+						onChangeNewName={props.onChangeNewName}
+						onChangeNewDescription={props.onChangeNewDescription}
+						onChangeNewLocation={props.onChangeNewLocation}
+						onCreate={props.onCreate}
+					/>
+
+					{/* 技能卡片网格 */}
+					{filteredSkills.length === 0 ? (
+						searchQuery ? (
+							<div className="flex flex-col items-center gap-2 py-12 text-center">
+								<Search size={24} className="text-muted-foreground/40" />
+								<p className="text-sm text-muted-foreground">
+									{t("config.noSearchResults")}
+								</p>
+							</div>
+						) : (
+							<EmptyState onCreateClick={() => setCreateFormExpanded(true)} />
+						)
+					) : (
+						<div className="skill-card-grid">
+							{/* Enabled skills */}
+							{enabledSkills.length > 0 && (
+								<>
+									{enabledSkills.length > 1 && (
+										<h4 className="skill-section-label mb-2 text-xs font-medium text-muted-foreground">
+											{t("common.enabled")} · {enabledSkills.length}
+										</h4>
+									)}
+									{enabledSkills.map((skill) => (
+										<SkillCard
+											key={skill.id}
+											skill={skill}
+											onToggle={props.onToggle}
+											onDelete={props.onDelete}
+											onEdit={props.onEdit}
+											onRename={props.onRename}
+										/>
+									))}
+								</>
+							)}
+
+							{/* Disabled skills */}
+							{disabledSkills.length > 0 && (
+								<>
+									{enabledSkills.length > 0 && (
+										<div className="col-span-full" />
+									)}
+									{disabledSkills.length > 1 && (
+										<h4 className="skill-section-label mb-2 mt-4 text-xs font-medium text-muted-foreground">
+											{t("common.disabled")} · {disabledSkills.length}
+										</h4>
+									)}
+									{disabledSkills.map((skill) => (
+										<SkillCard
+											key={skill.id}
+											skill={skill}
+											onToggle={props.onToggle}
+											onDelete={props.onDelete}
+											onEdit={props.onEdit}
+											onRename={props.onRename}
+										/>
+									))}
+								</>
+							)}
+						</div>
+					)}
+				</>
+			)}
+		</div>
 	);
 }
 

@@ -8,6 +8,7 @@ import {
   sessionRuntimeByIdAtom,
   sessionRuntimeUiByIdAtom,
 } from "./session-atoms";
+import { pinnedFirstByUpdatedAt } from "../utils/sessionRecordIdentity";
 
 export function sessionRecordToSummary(
   session: SessionRecord,
@@ -57,7 +58,7 @@ export const sessionSummariesByProjectIdAtomFamily = atomFamily((projectId: stri
   atom((get) => get(sessionRecordsByProjectIdAtomFamily(projectId))
     .map(sessionRecordToSummary)
     .filter((session): session is SessionSummary => Boolean(session))
-    .sort((left, right) => right.updatedAt - left.updatedAt)),
+    .sort(pinnedFirstByUpdatedAt)),
 );
 
 export const sessionRuntimeBySessionIdAtomFamily = atomFamily((sessionId: string) =>

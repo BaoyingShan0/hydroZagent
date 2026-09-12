@@ -1236,5 +1236,14 @@ export function createPreviewApi(): PiDesktopApi {
 			getConfig: async () => ({ providers: [], activeProviderId: "", activeModel: "" }),
 			saveConfig: async (config) => ({ ok: true, config }),
 		},
+		// 职称评审审查预览桩
+		zhicheng: {
+			checkStatus: async () => ({ status: "ok", currentStep: 1, reportsCount: 0, persons: [], ledger: [] }),
+			uploadCsv: async (_data) => ({ status: "ok", filePath: "preview.csv" }),
+			download: async (_options) => ({ status: "ok", manifestPath: "manifest.json" }),
+			review: async (_options) => ({ status: "ok", persons: [] }),
+			ledger: async () => ({ status: "ok", ledgerPath: "ledger.xlsx", ledger: [] }),
+			onStatusChanged: () => () => {},
+		},
 	};
 }

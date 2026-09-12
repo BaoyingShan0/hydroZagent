@@ -23,6 +23,16 @@ export function isTransientRenameError(error: unknown): boolean {
 	return code === "EPERM" || code === "EBUSY";
 }
 
+/** 判断错误是否为文件读写的瞬态锁冲突，可安全重试。
+ * Windows 上文件被 Agent 等进程持有时，可能返回 EPERM/EBUSY/EACCES。 */
+export function isTransientFileError(error: unknown): boolean {
+	const code =
+		error && typeof error === "object" && "code" in error
+			? (error as { code?: unknown }).code
+			: undefined;
+	return code === "EPERM" || code === "EBUSY" || code === "EACCES";
+}
+
 /**
  * 对 rename 的瞬态锁冲突做退避重试；重试耗尽后抛出最后一次错误。
  * 非 EPERM/EBUSY 错误（如 ENOENT 源缺失）立即抛出，不做无谓重试。

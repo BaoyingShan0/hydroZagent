@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight, GitBranch, HatGlasses, Plus, Trash2 } from "
 import type { AgentTab, Project, SessionRecord, WorktreeEntry } from "../../../../shared/types";
 import type { SidebarController } from "../../hooks/useSidebarController";
 import { t } from "../../i18n";
+import { showNotice } from "../../utils/notice";
 import type { SidebarActions } from "./SidebarContent";
 import { SessionTree } from "./SessionTree";
 import { Button } from "../ui-shadcn/button";
@@ -132,6 +133,11 @@ export function WorktreeTree(props: {
               currentSessionId={props.currentSessionId}
               controller={props.controller}
               actions={props.actions}
+              dragOverSessionId={props.controller.drag.overSessionId}
+              onDropSession={(targetSessionId) => {
+                props.controller.setSessionDropTarget(undefined);
+                showNotice(t("app.dragSortComingSoon"), 2000);
+              }}
             />
           </div>
         )}
@@ -292,6 +298,11 @@ function WorkspaceTreeRowView(props: {
             nested
             visibleChildCount={props.controller.visibleChildCountFor(childProject.id)}
             onShowMore={() => props.controller.showMoreChildren(childProject.id)}
+            dragOverSessionId={props.controller.drag.overSessionId}
+            onDropSession={(targetSessionId) => {
+              props.controller.setSessionDropTarget(undefined);
+              showNotice(t("app.dragSortComingSoon"), 2000);
+            }}
           />
         </div>
       )}

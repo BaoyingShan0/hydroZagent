@@ -192,7 +192,7 @@ export function SidebarContent(props: SidebarContentProps) {
             {[
               { id: "extensions", label: t("app.nav.extensions"), icon: Puzzle },
               { id: "skills", label: t("app.nav.skills"), icon: Sparkles },
-              { id: "experts", label: t("app.nav.experts"), icon: Users },
+              { id: "assistant", label: t("app.nav.assistant"), icon: Users },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = props.activePage === item.id;
@@ -333,6 +333,22 @@ export function SidebarContent(props: SidebarContentProps) {
           isRpcLogging={controller.isAgentRpcLogging(menuAgent.id)}
           rpcToggleDisabled={!menuAgentCanRpcLog}
           allowRpcLogging={!props.managedMode}
+          onTogglePin={() => {
+            const newPinned = !menuSession?.pinned;
+            void desktopApi.sessions.pinCatalogSession(menuSession?.id!, newPinned)
+              .then((ok) => {
+                if (ok) {
+                  void showNotice(t(newPinned ? "menu.pinSessionSuccess" : "menu.unpinSessionSuccess"), 2000);
+                  controller.closeMenu();
+                } else {
+                  void showNotice(t("menu.pinSessionFailed"), 2000);
+                }
+              })
+              .catch(() => {
+                void showNotice(t("menu.pinSessionFailed"), 2000);
+              });
+          }}
+          pinned={Boolean(menuSession?.pinned)}
           onOpenLogs={() => { controller.openRpcLogs(menuAgent.id); controller.closeMenu(); }}
           onCloseAgent={() => { void actions.agents.close(menuAgent); controller.closeMenu(); }}
           onDeleteSession={() => {
@@ -359,6 +375,22 @@ export function SidebarContent(props: SidebarContentProps) {
           menu={{ x: menu.x, y: menu.y }}
           onClose={controller.closeMenu}
           onDelete={() => { void actions.sessions.deleteDraft(menuDraft); controller.closeMenu(); }}
+          onTogglePin={() => {
+            const newPinned = !menuDraft.pinned;
+            void desktopApi.sessions.pinCatalogSession(menuDraft.id, newPinned)
+              .then((ok) => {
+                if (ok) {
+                  void showNotice(t(newPinned ? "menu.pinSessionSuccess" : "menu.unpinSessionSuccess"), 2000);
+                  controller.closeMenu();
+                } else {
+                  void showNotice(t("menu.pinSessionFailed"), 2000);
+                }
+              })
+              .catch(() => {
+                void showNotice(t("menu.pinSessionFailed"), 2000);
+              });
+          }}
+          pinned={Boolean(menuDraft.pinned)}
         />
       )}
       {menuSession && menu?.kind === "session" && (
@@ -410,9 +442,19 @@ export function SidebarContent(props: SidebarContentProps) {
           onArchiveSession={() => { void actions.sessions.archive(menu.projectId, menuSession); controller.closeMenu(); }}
           onDeleteSession={() => { void actions.sessions.delete(menu.projectId, menuSession); controller.closeMenu(); }}
           onTogglePin={() => {
-            void desktopApi.sessions.pinCatalogSession(menuSession.id, !menuSession.pinned).then((ok) => {
-              if (ok) controller.closeMenu();
-            });
+            const newPinned = !menuSession.pinned;
+            void desktopApi.sessions.pinCatalogSession(menuSession.id, newPinned)
+              .then((ok) => {
+                if (ok) {
+                  void showNotice(t(newPinned ? "menu.pinSessionSuccess" : "menu.unpinSessionSuccess"), 2000);
+                  controller.closeMenu();
+                } else {
+                  void showNotice(t("menu.pinSessionFailed"), 2000);
+                }
+              })
+              .catch(() => {
+                void showNotice(t("menu.pinSessionFailed"), 2000);
+              });
           }}
           pinned={Boolean(menuSession.pinned)}
         />

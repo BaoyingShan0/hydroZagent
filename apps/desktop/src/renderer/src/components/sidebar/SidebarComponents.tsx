@@ -497,6 +497,9 @@ export function AgentContextMenu(props: {
 	/** 运行中也可删：主进程先停后删，不必先关 Agent。 */
 	onDeleteSession?: () => void;
 	allowRpcLogging?: boolean;
+	/** 置顶会话切换 */
+	onTogglePin?: () => void;
+	pinned?: boolean;
 }) {
 	const busy = Boolean(props.actionLoading);
 	return (
@@ -544,6 +547,11 @@ export function AgentContextMenu(props: {
 			)}
 			</>}
 			<DropdownMenuSeparator />
+			{props.onTogglePin && (
+				<DropdownMenuItem onSelect={props.onTogglePin}>
+					{props.pinned ? t("menu.unpinSession") : t("menu.pinSession")}
+				</DropdownMenuItem>
+			)}
 			<DropdownMenuItem variant="destructive" onSelect={props.onCloseAgent}>{t("menu.closeAgent")}</DropdownMenuItem>
 			{props.onDeleteSession && (
 				<DropdownMenuItem variant="destructive" disabled={busy} onSelect={props.onDeleteSession}>
@@ -558,9 +566,15 @@ export function DraftSessionContextMenu(props: {
 	menu: { x: number; y: number };
 	onClose: () => void;
 	onDelete: () => void;
+	onTogglePin: () => void;
+	pinned: boolean;
 }) {
 	return (
 		<MenuShell x={props.menu.x} y={props.menu.y} onClose={props.onClose}>
+			<DropdownMenuItem onSelect={props.onTogglePin}>
+				{props.pinned ? t("menu.unpinSession") : t("menu.pinSession")}
+			</DropdownMenuItem>
+			<DropdownMenuSeparator />
 			<DropdownMenuItem variant="destructive" onSelect={props.onDelete}>{t("common.delete")}</DropdownMenuItem>
 		</MenuShell>
 	);
@@ -606,7 +620,7 @@ export function SessionContextMenu(props: {
 				<DropdownMenuItem disabled={busy} onSelect={props.onOpenProxySetting}>{t("menu.sessionProxy")}</DropdownMenuItem>
 			)}
 			<DropdownMenuItem disabled={busy} onSelect={props.onTogglePin}>
-				{props.pinned ? "📌 " : "📎 "}{props.pinned ? t("menu.unpinSession") : t("menu.pinSession")}
+				{props.pinned ? t("menu.unpinSession") : t("menu.pinSession")}
 			</DropdownMenuItem>
 			{props.menu.session.backend !== "dsh" && (
 				<DropdownMenuItem disabled={busy} onSelect={props.onCopySession}>

@@ -1613,6 +1613,23 @@ const api = {
 		saveConfig: (config: ImageGenConfigFile) =>
 			ipcRenderer.invoke(ipcChannels.imagegenSaveConfig, config) as Promise<ImageGenSaveResult>,
 	},
+	// ===== 职称评审审查 =====
+	zhicheng: {
+		checkStatus: () =>
+			ipcRenderer.invoke(ipcChannels.zhichengCheckStatus) as Promise<any>,
+		reset: () =>
+			ipcRenderer.invoke(ipcChannels.zhichengReset) as Promise<{ status: string; error?: string }>,
+		uploadCsv: (data: { path: string; name: string; content: string }) =>
+			ipcRenderer.invoke(ipcChannels.zhichengUploadCsv, data) as Promise<{ status: string; filePath?: string; error?: string }>,
+		download: (options: { csvPath: string; workers?: number; retries?: number }) =>
+			ipcRenderer.invoke(ipcChannels.zhichengDownload, options) as Promise<{ status: string; manifestPath?: string; error?: string }>,
+		review: (options: { persons?: string[] }) =>
+			ipcRenderer.invoke(ipcChannels.zhichengReview, options) as Promise<{ status: string; persons?: any[]; error?: string }>,
+		ledger: () =>
+			ipcRenderer.invoke(ipcChannels.zhichengLedger) as Promise<{ status: string; ledgerPath?: string; ledger?: any[]; error?: string }>,
+		onStatusChanged: (callback: (status: any) => void) =>
+			subscribe(ipcChannels.zhichengStatusChanged, callback),
+	},
 };
 
 function subscribe<T>(channel: string, callback: (payload: T) => void) {

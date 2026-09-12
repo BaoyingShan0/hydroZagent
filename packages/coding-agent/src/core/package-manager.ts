@@ -1805,11 +1805,17 @@ export class DefaultPackageManager implements PackageManager {
 		const targetDir = this.getGitInstallPath(source, scope);
 		if (existsSync(targetDir)) {
 			if (source.ref) {
-				await this.ensureGitRef(targetDir, ["fetch", "origin", source.ref], "FETCH_HEAD");
+				await this.ensureGitRef(targetDir, ["fetch", "origin", source.ref], "FETCH_HEAD").catch(() => {
+					// 网络故障（代理不可用等）导致 fetch 失败时，静默跳过而非中断启动
+				});
 				return;
 			}
-			const target = await this.getLocalGitUpdateTarget(targetDir);
-			await this.ensureGitRef(targetDir, target.fetchArgs, target.ref);
+			const target = await this.getLocalGitUpdateTarget(targetDir).catch(() => null);
+			if (target) {
+				await this.ensureGitRef(targetDir, target.fetchArgs, target.ref).catch(() => {
+					// fetch 失败不中断启动
+				});
+			}
 			return;
 		}
 		const gitRoot = this.getGitInstallRoot(scope);
@@ -1831,7 +1837,12 @@ export class DefaultPackageManager implements PackageManager {
 		} catch (error) {
 			rmSync(targetDir, { recursive: true, force: true });
 			this.pruneEmptyGitParents(targetDir, gitRoot);
-			throw error;
+			// 网络故障（代理不可用、DNS 解析失败等）不中断启动：跳过此扩展/技能仓库
+			// 静默失败会让后续 resolve 阶段检测到目录不存在而继续跳过该源，不会崩溃
+			console.warn("[package-manager] Git clone failed, skipping source:", {
+				source: source.repo,
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 
